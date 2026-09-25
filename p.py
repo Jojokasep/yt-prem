@@ -98,7 +98,6 @@ HTML_TEMPLATE = """
         .player-container { position: relative; width: 100%; padding-bottom: 56.25%; background: #000; border-radius: 12px; overflow: hidden; }
         .player-container iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; }
         
-        /* MINI PLAYER / MENGAPUNG (YOUTUBE STYLE) */
         #player-section.mini-player {
             position: fixed !important;
             bottom: 24px;
@@ -117,7 +116,6 @@ HTML_TEMPLATE = """
         #player-section.mini-player .player-container { border-radius: 10px; }
         #player-section.mini-player .player-meta { display: none; }
         
-        /* Tombol Kontrol Khusus Mini Player */
         .mini-controls {
             display: none;
             position: absolute;
@@ -809,42 +807,46 @@ HTML_TEMPLATE = """
 """
 
 def extract_video_data(video):
-    """Extract all available metadata from a scrapetube video object."""
+    """Extract all available metadata safely from a scrapetube video object."""
     data = {"id": video.get("videoId"), "title": "No Title"}
     
-    try: data["title"] = video.get("title", {}).get("runs", [{}])[0].get("text", "No Title")
+    try: 
+        runs = video.get("title", {}).get("runs")
+        if runs: data["title"] = runs[0].get("text", "No Title")
     except Exception: pass
+
     try: data["duration"] = video.get("lengthText", {}).get("simpleText", "")
     except Exception: pass
+    
     try: data["views"] = video.get("viewCountText", {}).get("simpleText", "")
     except Exception: pass
+    
     try: data["published"] = video.get("publishedTimeText", {}).get("simpleText", "")
     except Exception: pass
     
     try:
-        run = video.get("longBylineText", {}).get("runs", [{}])[0]
-        data["channel"] = run.get("text", "")
-        data["channelUrl"] = run.get("navigationEndpoint", {}).get("commandMetadata", {}).get("webCommandMetadata", {}).get("url", "")
-        if not data["channel"]:
-            run2 = video.get("ownerText", {}).get("runs", [{}])[0]
-            data["channel"] = run2.get("text", "")
-            data["channelUrl"] = run2.get("navigationEndpoint", {}).get("commandMetadata", {}).get("webCommandMetadata", {}).get("url", "")
-    except Exception: pass
+        byline = video.get("longBylineText") or video.get("ownerText")
+        if byline:
+            run = byline.get("runs", [{}])[0]
+            data["channel"] = run.get("text", "")
+            data["channelUrl"] = run.get("navigationEndpoint", {}).get("commandMetadata", {}).get("webCommandMetadata", {}).get("url", "")
+    except Exception: 
+        data["channel"] = ""
+        data["channelUrl"] = ""
     
     try:
         avatar_thumbs = video.get("channelThumbnailSupportedRenderers", {}).get("channelThumbnailWithLinkRenderer", {}).get("thumbnail", {}).get("thumbnails", [])
         if avatar_thumbs: data["avatar"] = avatar_thumbs[0].get("url", "")
-    except Exception: pass
+    except Exception: 
+        data["avatar"] = ""
     
     try:
         desc_runs = video.get("detailedMetadataSnippets", [{}])[0].get("snippetText", {}).get("runs", [])
-        data["description"] = "".join([r.get("text", "") for r in desc_runs])
-    except Exception:
-        try:
+        if not desc_runs:
             desc_runs = video.get("descriptionSnippet", {}).get("runs", [])
-            data["description"] = "".join([r.get("text", "") for r in desc_runs])
-        except Exception:
-            data["description"] = "Tidak ada deskripsi yang tersedia."
+        data["description"] = "".join([r.get("text", "") for r in desc_runs]) if desc_runs else "Tidak ada deskripsi yang tersedia."
+    except Exception:
+        data["description"] = "Tidak ada deskripsi yang tersedia."
 
     return data
 
@@ -859,27 +861,28 @@ def api_trending():
         videos = scrapetube.get_trending("ID", limit=24)
         for v in videos:
             d = extract_video_data(v)
-            if d["id"]: results.append(d)
+            if d.get("id"): results.append(d)
     except Exception:
         try:
-            videos = scrapetube.get_search("trending Indonesia 2025", limit=24)
+            videos = scrapetube.get_search("trending Indonesia", limit=24)
             for v in videos:
                 d = extract_video_data(v)
-                if d["id"]: results.append(d)
+                if d.get("id"): results.append(d)
         except Exception: pass
     return jsonify(results)
 
 @app.route("/api/search")
 def api_search():
-    query = request.args.get("q", "")
+    query = request.args.get("q", "").strip()
     results = []
-    if query:
-        try:
-            videos = scrapetube.get_search(query, limit=60)
-            for v in videos:
-                d = extract_video_data(v)
-                if d["id"]: results.append(d)
-        except Exception: pass
+    if not query:
+        return jsonify(results)
+    try:
+        videos = scrapetube.get_search(query, limit=50)
+        for v in videos:
+            d = extract_video_data(v)
+            if d.get("id"): results.append(d)
+    except Exception: pass
     return jsonify(results)
 
 @app.route("/api/shorts")
@@ -893,7 +896,7 @@ def api_shorts():
             if dur_text:
                 parts = dur_text.split(":")
                 if len(parts) == 1 or (len(parts) == 2 and int(parts[0]) == 0):
-                    if d["id"] not in [item["id"] for item in results]:
+                    if d.get("id") and d["id"] not in [item["id"] for item in results]:
                         results.append(d)
             if len(results) >= 16:
                 break
