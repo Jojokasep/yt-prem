@@ -88,7 +88,6 @@ HTML_TEMPLATE = """
         .yt-logo-box { display: flex; align-items: center; background: #ff0000; width: 30px; height: 20px; border-radius: 5px; justify-content: center; position: relative; }
         .yt-logo-box::after { content: ""; position: absolute; width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 9px solid #fff; left: 11px; }
         
-        /* Gaya Logo YouTube Premium khas */
         .yt-logo-container { display: flex; align-items: baseline; gap: 4px; }
         .yt-logo-text { font-size: 20px; font-weight: 700; letter-spacing: -1px; color: var(--text-color); }
         .yt-premium-badge { font-size: 11px; font-weight: 700; color: #aaa; letter-spacing: 0.5px; background: rgba(255,255,255,0.1); padding: 1px 4px; border-radius: 3px; }
@@ -137,8 +136,8 @@ HTML_TEMPLATE = """
         .short-card iframe { width: 100%; height: 100%; border: none; pointer-events: none; }
         .short-overlay { position: absolute; bottom: 16px; left: 16px; right: 16px; color: #fff; z-index: 2; pointer-events: none; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
 
-        #player-section { display: none; margin-top: 0; padding-bottom: 70px; min-height: 100vh; background: var(--bg-color); z-index: 200; position: absolute; top: 0; left: 0; width: 100%; transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
-        .player-container { width: 100%; aspect-ratio: 16/9; background: #000; position: sticky; top: 0; z-index: 105; touch-action: none; }
+        #player-section { display: none; margin-top: 0; padding-bottom: 70px; min-height: 100vh; background: var(--bg-color); z-index: 200; position: absolute; top: 0; left: 0; width: 100%; }
+        .player-container { width: 100%; aspect-ratio: 16/9; background: #000; position: sticky; top: 0; z-index: 105; }
         .player-container iframe { width: 100%; height: 100%; border: none; pointer-events: auto; }
         .css-fullscreen { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; max-width: none !important; aspect-ratio: auto !important; z-index: 99999 !important; border-radius: 0 !important; background: #000; display: flex; align-items: center; justify-content: center; }
 
@@ -159,7 +158,7 @@ HTML_TEMPLATE = """
         
         .comments-box { background: var(--card-bg); border-radius: 12px; padding: 12px 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500; color: var(--text-color); cursor: pointer; }
 
-        /* ===== MINI PLAYER KANAN BAWAH (PIEP STYLE) ===== */
+        /* ===== MINI PLAYER KANAN BAWAH ===== */
         #mini-player { 
             display: none; 
             position: fixed; 
@@ -302,6 +301,8 @@ HTML_TEMPLATE = """
         <div class="action-row">
             <div class="action-pill" onclick="openSettings()"><span class="material-icons-outlined">settings</span> Pengaturan</div>
             <div class="action-pill" onclick="toggleCustomFullscreen()"><span class="material-icons-outlined" id="fs-icon">fullscreen</span> Perbesar</div>
+            <!-- Tombol Mini Player ditambahkan di sini agar mudah diklik -->
+            <div class="action-pill" onclick="minimizePlayerToMini()"><span class="material-icons-outlined">picture_in_picture_alt</span> Mini Player</div>
             <div class="action-pill" onclick="shareVideo()"><span class="material-icons-outlined">share</span> Bagikan</div>
             <div class="action-pill" onclick="downloadVideo()"><span class="material-icons-outlined">download</span> Unduh</div>
             <div class="action-pill" onclick="saveTontonNanti()"><span class="material-icons-outlined">playlist_add</span> Simpan</div>
@@ -821,8 +822,7 @@ HTML_TEMPLATE = """
         document.body.style.overflow = '';
 
         const ps = document.getElementById('player-section');
-        ps.style.transition = 'none';
-        ps.style.transform = 'translateY(0)';
+        ps.style.display = 'block';
         document.getElementById('player-title').textContent = v.title;
         document.getElementById('player-channel-name').textContent = v.channel || 'YouTube Creator';
         document.getElementById('player-channel-avatar').src = v.avatar || '';
@@ -837,7 +837,7 @@ HTML_TEMPLATE = """
         document.getElementById('mini-video-slot').innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&controls=0&mute=0&rel=0&playsinline=1" allow="autoplay"></iframe>`;
         document.getElementById('mini-play-icon').textContent = 'pause';
 
-        ps.style.display = 'block'; window.scrollTo(0,0);
+        window.scrollTo(0,0);
     }
 
     function toggleMiniPlay(e) {
@@ -864,26 +864,17 @@ HTML_TEMPLATE = """
     }
 
     function minimizePlayerToMini() {
-        const ps = document.getElementById('player-section');
-        ps.style.transition = 'transform 0.25s ease';
-        ps.style.transform = 'translateY(100%)';
-        setTimeout(() => {
-            ps.style.display = 'none';
-            ps.style.transform = 'translateY(0)';
-            document.getElementById('main').style.display = 'block';
-            if(currentPlayingVideoStr) {
-                document.getElementById('mini-player').classList.add('active');
-            }
-        }, 250);
+        document.getElementById('player-section').style.display = 'none';
+        document.getElementById('main').style.display = 'block';
+        if(currentPlayingVideoStr) {
+            document.getElementById('mini-player').classList.add('active');
+        }
     }
 
     function expandPlayer() {
         document.getElementById('main').style.display = 'none';
         document.getElementById('mini-player').classList.remove('active');
-        const ps = document.getElementById('player-section');
-        ps.style.transition = 'none';
-        ps.style.display = 'block';
-        ps.style.transform = 'translateY(0)';
+        document.getElementById('player-section').style.display = 'block';
     }
 
     function closeMiniPlayer() {
@@ -896,42 +887,6 @@ HTML_TEMPLATE = """
         document.getElementById('fs-icon').textContent = 'fullscreen';
         document.body.style.overflow = '';
     }
-
-    // ===== GESTURE TARIK KE BAWAH (SWIPE DOWN TO MINI-PLAYER / PIP) =====
-    let startY = 0;
-    let currentY = 0;
-    let isDragging = false;
-    const playerContainer = document.getElementById('player-container-box');
-    const playerSec = document.getElementById('player-section');
-
-    playerContainer.addEventListener('touchstart', (e) => {
-        if (playerContainer.classList.contains('css-fullscreen')) return;
-        startY = e.touches[0].clientY;
-        isDragging = true;
-        playerSec.style.transition = 'none';
-    });
-
-    playerContainer.addEventListener('touchmove', (e) => {
-        if (!isDragging || playerContainer.classList.contains('css-fullscreen')) return;
-        currentY = e.touches[0].clientY;
-        let diff = currentY - startY;
-        if (diff > 0) {
-            playerSec.style.transform = `translateY(${diff}px)`;
-        }
-    });
-
-    playerContainer.addEventListener('touchend', (e) => {
-        if (!isDragging || playerContainer.classList.contains('css-fullscreen')) return;
-        isDragging = false;
-        let diff = currentY - startY;
-        playerSec.style.transition = 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)';
-        if (diff > 100) {
-            minimizePlayerToMini();
-        } else {
-            playerSec.style.transform = 'translateY(0)';
-        }
-        startY = 0; currentY = 0;
-    });
 
     function showSkeletons() { 
         document.getElementById('video-grid').innerHTML = Array(6).fill(`<div class="vid-card"><div class="thumb-wrap skeleton" style="border-radius:0;"></div><div class="vid-info"><div class="channel-avatar skeleton"></div><div class="vid-text"><div class="skeleton" style="height:14px; margin-bottom:8px; width:90%; border-radius:4px;"></div><div class="skeleton" style="height:12px; width:60%; border-radius:4px;"></div></div></div></div>`).join(''); 
