@@ -82,7 +82,7 @@ HTML_TEMPLATE = """
         /* Custom Fullscreen tanpa pop-up nocookie */
         .css-fullscreen { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; max-width: none !important; aspect-ratio: auto !important; z-index: 99999 !important; border-radius: 0 !important; background: #000; display: flex; align-items: center; justify-content: center; }
         
-        /* Tombol Perbesar Kustom di Pojok Kanan Atas (Tanpa Dobel Ikon Roda Gigi) */
+        /* Tombol Perbesar Kustom di Pojok Kanan Atas Saja */
         .floating-fs-btn { position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.6); color: #fff; border: none; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 110; }
         .floating-fs-btn .material-icons-outlined { font-size: 20px; }
 
@@ -181,7 +181,7 @@ HTML_TEMPLATE = """
 
 <div id="player-section">
     <div class="player-container" id="player-container-box">
-        <!-- Tombol Perbesar/Kecilkan Layar Kustom Saja (Bersih tanpa dobel roda gigi) -->
+        <!-- Tombol Perbesar Layar Saja (Tanpa tombol roda gigi melayang) -->
         <button class="floating-fs-btn" onclick="toggleCustomFullscreen()"><span class="material-icons-outlined" id="fs-icon">fullscreen</span></button>
         
         <div id="player-box" style="width:100%; height:100%;"></div>
@@ -195,7 +195,6 @@ HTML_TEMPLATE = """
         </div>
         
         <div class="action-row">
-            <!-- Tombol Pengaturan dipindah ke sini agar rapi di bawah video -->
             <div class="action-pill" onclick="openSettings()"><span class="material-icons-outlined">settings</span> Pengaturan</div>
             <div class="action-pill"><span class="material-icons-outlined">share</span> Bagikan</div>
             <div class="action-pill"><span class="material-icons-outlined">download</span> Unduh</div>
@@ -464,7 +463,6 @@ HTML_TEMPLATE = """
         document.getElementById('player-channel-avatar').src = v.avatar || '';
         document.getElementById('player-views').textContent = (v.views || '123 rb tampilan') + ' • ' + (v.published || 'Baru saja');
         
-        // Parameter tambahan (iv_load_policy=3 & modestbranding=1) untuk menyembunyikan logo dan elemen terbang YouTube
         document.getElementById('player-box').innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0&fs=0&iv_load_policy=3&modestbranding=1" allow="autoplay"></iframe>`;
         
         let related = [...activeData].sort(() => 0.5 - Math.random()).slice(0, 5);
@@ -612,7 +610,7 @@ def api_shorts():
     results = []
     try:
         videos = scrapetube.get_search("shorts viral #shorts", limit=60)
-        for v videos:
+        for v in videos:
             d = extract_video_data(v); dur_text = d.get("duration", ""); is_short = False
             if dur_text:
                 parts = dur_text.split(":")
