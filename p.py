@@ -6,7 +6,6 @@ import json
 
 app = Flask(__name__)
 
-# Simple In-Memory Cache untuk menghindari scraping berulang
 search_cache = {}
 
 HTML_TEMPLATE = """
@@ -23,7 +22,6 @@ HTML_TEMPLATE = """
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto', Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
         
-        /* ===== TEMA WARNA (DARK / LIGHT MODE) ===== */
         :root {
             --bg-gradient: linear-gradient(-45deg, #0f0f0f, #181111, #0f0f0f, #111818);
             --bg-color: #0f0f0f;
@@ -78,7 +76,6 @@ HTML_TEMPLATE = """
             animation: shimmer 2s infinite linear;
         }
 
-        /* ===== TOAST NOTIFICATION ===== */
         #toast {
             position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%) translateY(100px);
             background: #333; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 14px;
@@ -86,7 +83,6 @@ HTML_TEMPLATE = """
         }
         #toast.show { transform: translateX(-50%) translateY(0); }
 
-        /* ===== HEADER ===== */
         #header { position: fixed; top: 0; left: 0; right: 0; height: 56px; background: var(--surface-color); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 100; border-bottom: 1px solid var(--border-color); }
         .header-left { display: flex; align-items: center; gap: 6px; cursor: pointer; }
         .yt-logo-box { display: flex; align-items: center; background: #ff0000; width: 30px; height: 20px; border-radius: 5px; justify-content: center; position: relative; }
@@ -113,7 +109,7 @@ HTML_TEMPLATE = """
         .chips-wrapper { position: sticky; top: 56px; background: var(--surface-color); backdrop-filter: blur(10px); z-index: 10; padding: 12px 16px; display: flex; gap: 12px; align-items: center; border-bottom: 1px solid var(--border-color); }
         .explore-icon { background: var(--card-bg); padding: 6px; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-color); }
         .chips-bar { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
-        .chip { padding: 6px 14px; border-radius: 8px; font-size: 14px; font-weight: 500; white-space: nowrap; border: none; background: var(--card-bg); color: var(--text-color); cursor: pointer; transition: 0.2s; }
+        .chip { padding: 6px 14px; border-radius: 8px; font-size: 14px; font-weight: 500; white-space: nowrap; border: none; background: var(--card-bg); color: var(--text-color); cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 4px; }
         .chip.active { background: var(--text-color); color: var(--bg-color); }
 
         /* GRID VIDEO */
@@ -211,22 +207,23 @@ HTML_TEMPLATE = """
         <button class="header-icon" onclick="openSettings()"><span class="material-icons-outlined">more_vert</span></button>
     </div>
     
-    <div class="search-form-mobile" id="mobile-search-form">
+    <!-- Formulir Pencarian dengan onsubmit agar tombol Enter / Go di HP berfungsi otomatis -->
+    <form class="search-form-mobile" id="mobile-search-form" onsubmit="submitSearch(event)">
         <div class="search-top-bar">
             <button type="button" class="header-icon" onclick="toggleSearch(false)"><span class="material-icons-outlined">arrow_back</span></button>
             <div class="search-input-wrap-mob">
                 <input type="text" id="keyword-mobile" placeholder="Telusuri YouTube" autocomplete="off" oninput="debounceFetchSuggestions(this.value)">
             </div>
-            <button type="button" class="header-icon" style="background:var(--card-bg);" onclick="submitSearch()"><span class="material-icons-outlined" style="font-size:20px;">search</span></button>
+            <button type="submit" class="header-icon" style="background:var(--card-bg);"><span class="material-icons-outlined" style="font-size:20px;">search</span></button>
         </div>
         <div class="search-suggestions-list" id="suggestions-list"></div>
-    </div>
+    </form>
 </header>
 
 <main id="main">
     <div class="chips-wrapper" id="chips-container">
         <div class="explore-icon" onclick="loadTrending()"><span class="material-icons-outlined" style="font-size: 20px;">explore</span></div>
-        <div class="chips-bar">
+        <div class="chips-bar" id="chips-bar-content">
             <button class="chip active" onclick="chipClick(this,'')">Semua</button>
             <button class="chip" onclick="chipClick(this,'Musik')">Musik</button>
             <button class="chip" onclick="chipClick(this,'Game')">Game</button>
@@ -411,6 +408,7 @@ HTML_TEMPLATE = """
         showSkeletons();
         currentQuery = '';
         currentOffset = 0;
+        resetChipsToHome();
         try { 
             const res = await fetch('/api/home'); 
             activeData = await res.json(); 
@@ -487,26 +485,82 @@ HTML_TEMPLATE = """
 
     function selectSuggestion(text) {
         document.getElementById('keyword-mobile').value = text;
-        submitSearch();
+        executeSearch(text);
     }
 
-    function submitSearch() {
+    // Fungsi submit via Enter / Tombol Cari Keyboard HP
+    function submitSearch(e) {
+        if(e) e.preventDefault();
         const q = document.getElementById('keyword-mobile').value.trim();
-        if (q) { 
-            activateNav(document.querySelector('.nav-item')); 
-            currentQuery = q; currentOffset = 0; 
-            toggleSearch(false); 
-            showSkeletons();
-            fetch('/api/search?q=' + encodeURIComponent(q)).then(r=>r.json()).then(d => { 
-                currentOffset=d.length; activeData = d; renderGrid(d); 
-            }).catch(() => showToast('Pencarian gagal'));
+        if (q) {
+            executeSearch(q);
         }
     }
 
+    function executeSearch(q) {
+        activateNav(document.querySelector('.nav-item')); 
+        currentQuery = q; 
+        currentOffset = 0; 
+        toggleSearch(false); 
+        showSkeletons();
+        
+        // Ubah chips bar menjadi gaya filter hasil pencarian YouTube
+        renderSearchFilterChips();
+
+        fetch('/api/search?q=' + encodeURIComponent(q))
+            .then(r => r.json())
+            .then(d => { 
+                currentOffset = d.length; 
+                activeData = d; 
+                renderGrid(d); 
+            })
+            .catch(() => showToast('Pencarian gagal'));
+    }
+
+    function renderSearchFilterChips() {
+        const bar = document.getElementById('chips-bar-content');
+        bar.innerHTML = `
+            <button class="chip active" onclick="filterSearchType(this, 'all')"><span class="material-icons-outlined" style="font-size:16px;">done</span> Semua</button>
+            <button class="chip" onclick="filterSearchType(this, 'video')">Video</button>
+            <button class="chip" onclick="filterSearchType(this, 'channel')">Saluran</button>
+            <button class="chip" onclick="filterSearchType(this, 'playlist')">Daftar Putar</button>
+            <button class="chip" onclick="filterSearchType(this, 'music')">Lagu YT Music</button>
+        `;
+    }
+
+    function resetChipsToHome() {
+        const bar = document.getElementById('chips-bar-content');
+        bar.innerHTML = `
+            <button class="chip active" onclick="chipClick(this,'')">Semua</button>
+            <button class="chip" onclick="chipClick(this,'Musik')">Musik</button>
+            <button class="chip" onclick="chipClick(this,'Game')">Game</button>
+            <button class="chip" onclick="chipClick(this,'Podcast')">Podcast</button>
+            <button class="chip" onclick="chipClick(this,'Berita')">Berita</button>
+            <button class="chip" onclick="chipClick(this,'Cuplikan')">Cuplikan</button>
+        `;
+    }
+
+    function filterSearchType(btn, type) {
+        document.querySelectorAll('.chips-bar .chip').forEach(c => {
+            c.classList.remove('active');
+            c.innerHTML = c.textContent.replace('done ', '');
+        });
+        btn.classList.add('active');
+        btn.innerHTML = `<span class="material-icons-outlined" style="font-size:16px;">done</span> ` + btn.textContent;
+        showToast('Filter ' + type + ' diterapkan');
+    }
+
     function chipClick(btn, query) {
-        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active')); btn.classList.add('active');
-        if (query) { currentQuery = query; currentOffset = 0; showSkeletons(); fetch('/api/search?q=' + encodeURIComponent(query)).then(r=>r.json()).then(d => { currentOffset=d.length; activeData=d; renderGrid(d); }); } 
-        else loadHome();
+        document.querySelectorAll('.chips-bar .chip').forEach(c => c.classList.remove('active')); 
+        btn.classList.add('active');
+        if (query) { 
+            currentQuery = query; 
+            currentOffset = 0; 
+            showSkeletons(); 
+            fetch('/api/search?q=' + encodeURIComponent(query)).then(r=>r.json()).then(d => { currentOffset=d.length; activeData=d; renderGrid(d); }); 
+        } else {
+            loadHome();
+        }
     }
 
     function loadTrending() {
@@ -531,6 +585,7 @@ HTML_TEMPLATE = """
         if (e) e.preventDefault(); 
         activateNav(el || document.querySelector('.nav-item')); 
         document.getElementById('chips-container').style.display = 'flex';
+        resetChipsToHome();
         window.scrollTo(0,0);
         if(currentQuery !== '') loadHome(); 
     }
