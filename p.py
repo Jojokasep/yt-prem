@@ -135,9 +135,50 @@ HTML_TEMPLATE = """
         .short-overlay { position: absolute; bottom: 16px; left: 16px; right: 16px; color: #fff; z-index: 2; pointer-events: none; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
 
         #player-section { display: none; margin-top: 0; padding-bottom: 70px; min-height: 100vh; background: var(--bg-color); z-index: 200; position: absolute; top: 0; left: 0; width: 100%; }
-        .player-container { width: 100%; aspect-ratio: 16/9; background: #000; position: sticky; top: 0; z-index: 105; }
+        
+        /* ===== PEMUTAR UTAMA & MINI PLAYER SINGLE ELEMENT ===== */
+        .player-container { width: 100%; aspect-ratio: 16/9; background: #000; position: sticky; top: 0; z-index: 105; transition: all 0.3s ease; }
         .player-container iframe { width: 100%; height: 100%; border: none; pointer-events: auto; }
+        
+        /* Ketika menjadi Mini Player di kanan bawah */
+        .player-container.mini-mode {
+            position: fixed !important;
+            bottom: 58px !important;
+            right: 12px !important;
+            top: auto !important;
+            left: auto !important;
+            width: 170px !important;
+            height: 95px !important;
+            aspect-ratio: auto !important;
+            border-radius: 8px !important;
+            z-index: 99999 !important;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.8);
+            border: 1px solid rgba(255,255,255,0.3);
+            overflow: hidden;
+        }
+        .player-container.mini-mode iframe { pointer-events: none; }
+        .player-container.mini-mode .floating-controls { display: flex !important; }
+
         .css-fullscreen { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; max-width: none !important; aspect-ratio: auto !important; z-index: 99999 !important; border-radius: 0 !important; background: #000; display: flex; align-items: center; justify-content: center; }
+
+        /* Tombol kontrol khusus mini player yang menempel di pojok pemutar */
+        .floating-controls {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            display: none;
+            gap: 2px;
+            background: rgba(0,0,0,0.7);
+            padding: 2px 4px;
+            border-radius: 10px;
+            backdrop-filter: blur(4px);
+            z-index: 100000;
+        }
+        .floating-controls .material-icons {
+            font-size: 16px;
+            color: #fff;
+            cursor: pointer;
+        }
 
         .player-meta { padding: 12px 16px; background: var(--surface-color); backdrop-filter: blur(5px); }
         .player-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; line-height: 1.3; color: var(--text-color); }
@@ -155,55 +196,6 @@ HTML_TEMPLATE = """
         .btn-subscribe.subscribed { background: var(--card-bg); color: var(--text-color); }
         
         .comments-box { background: var(--card-bg); border-radius: 12px; padding: 12px 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500; color: var(--text-color); cursor: pointer; }
-
-        /* ===== MINI PLAYER KANAN BAWAH ===== */
-        #mini-player { 
-            display: none; 
-            position: fixed; 
-            bottom: 58px; 
-            right: 12px; 
-            width: 170px; 
-            height: 95px; 
-            background: #000; 
-            border-radius: 8px; 
-            z-index: 99; 
-            overflow: hidden; 
-            box-shadow: 0 4px 16px rgba(0,0,0,0.8); 
-            border: 1px solid rgba(255,255,255,0.3); 
-            animation: fadeIn 0.3s ease;
-        }
-        #mini-player.active { display: block; }
-        
-        .floating-video-slot {
-            width: 100%;
-            height: 100%;
-            position: relative;
-            cursor: pointer;
-        }
-        .floating-video-slot iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-            pointer-events: none;
-        }
-
-        .floating-controls {
-            position: absolute;
-            top: 2px;
-            right: 2px;
-            display: flex;
-            gap: 2px;
-            background: rgba(0,0,0,0.7);
-            padding: 2px 4px;
-            border-radius: 10px;
-            backdrop-filter: blur(4px);
-            z-index: 5;
-        }
-        .floating-controls .material-icons {
-            font-size: 16px;
-            color: #fff;
-            cursor: pointer;
-        }
 
         #bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 50px; background: var(--surface-color); backdrop-filter: blur(10px); z-index: 100; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid var(--border-color); }
         .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-color); flex: 1; height: 100%; cursor: pointer; opacity: 0.7; }
@@ -282,11 +274,16 @@ HTML_TEMPLATE = """
 </main>
 
 <div id="player-section">
-    <div class="player-container" id="player-container-box">
+    <!-- Single Pemutar Utama yang bisa berubah jadi mini player -->
+    <div class="player-container" id="player-container-box" onclick="handleContainerClick(event)">
         <div id="player-box" style="width:100%; height:100%;"></div>
+        <div class="floating-controls" id="floating-ctrls">
+            <span class="material-icons" id="mini-play-icon" onclick="toggleMiniPlay(event)">pause</span>
+            <span class="material-icons" onclick="closeMiniPlayer(event)">close</span>
+        </div>
     </div>
     
-    <div class="player-meta fade-in">
+    <div class="player-meta fade-in" id="player-meta-info">
         <div class="player-title" id="player-title">Judul Video</div>
         <div class="player-views-date">
             <span id="player-views">572 rb tampilan • 3 hari yang lalu</span>
@@ -340,17 +337,6 @@ HTML_TEMPLATE = """
         <div class="setting-item" onclick="setQuality(720)">720p HD</div>
         <div class="setting-item" onclick="setQuality(480)">480p</div>
         <div class="setting-item" onclick="setQuality(360)">360p Data Saver</div>
-    </div>
-</div>
-
-<!-- Floating Mini Player di Kanan Bawah -->
-<div id="mini-player">
-    <div class="floating-video-slot" onclick="expandPlayer()">
-        <iframe id="mini-yt-iframe" src="" allow="autoplay"></iframe>
-    </div>
-    <div class="floating-controls">
-        <span class="material-icons" id="mini-play-icon" onclick="toggleMiniPlay(event)">pause</span>
-        <span class="material-icons" onclick="closeMiniPlayer()">close</span>
     </div>
 </div>
 
@@ -633,8 +619,11 @@ HTML_TEMPLATE = """
         el.classList.add('active');
         document.getElementById('main').style.display = 'block';
         document.getElementById('player-section').style.display = 'none';
-        if(currentPlayingVideoStr) {
-            document.getElementById('mini-player').classList.add('active');
+        
+        // Jika ada video aktif dan berada di mode mini player, tampilkan container mini player
+        const container = document.getElementById('player-container-box');
+        if(currentPlayingVideoStr && container.classList.contains('mini-mode')) {
+            container.style.display = 'block';
         }
     }
 
@@ -817,22 +806,24 @@ HTML_TEMPLATE = """
         activeVideoId = v.id;
         
         document.getElementById('main').style.display = 'none';
-        document.getElementById('mini-player').classList.remove('active');
-        document.getElementById('player-container-box').classList.remove('css-fullscreen');
+        
+        const container = document.getElementById('player-container-box');
+        container.classList.remove('mini-mode', 'css-fullscreen');
+        container.style.display = 'block';
         document.getElementById('fs-icon').textContent = 'fullscreen';
         document.body.style.overflow = '';
 
         const ps = document.getElementById('player-section');
         ps.style.display = 'block';
+        document.getElementById('player-meta-info').style.display = 'block';
+        
         document.getElementById('player-title').textContent = v.title;
         document.getElementById('player-channel-name').textContent = v.channel || 'YouTube Creator';
         document.getElementById('player-channel-avatar').src = v.avatar || '';
         document.getElementById('player-views').textContent = (v.views || '123 rb tampilan') + ' • ' + (v.published || 'Baru saja');
         
-        // Atur iframe utama
+        // Load iframe SATU-SATUNYA di player-box (tidak ada iframe ganda)
         document.getElementById('player-box').innerHTML = `<iframe id="yt-iframe" src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0&fs=0&iv_load_policy=3&modestbranding=1" allow="autoplay"></iframe>`;
-        // Kosongkan mini player agar tidak aktif bersamaan
-        document.getElementById('mini-yt-iframe').src = '';
         
         let related = [...activeData].sort(() => 0.5 - Math.random()).slice(0, 5);
         document.getElementById('related-grid').innerHTML = '';
@@ -843,64 +834,73 @@ HTML_TEMPLATE = """
         window.scrollTo(0,0);
     }
 
-    // ===== PERBAIKAN STABIL: KONTROL PAUSE/PLAY TANPA REFRESH/BERKEDIP =====
+    // ===== KONTROL SINGLE PLAYER (TIDAK ADA REFRESH & SINKRON SEMPURNA) =====
     function toggleMiniPlay(e) {
         e.stopPropagation();
         const icon = document.getElementById('mini-play-icon');
-        const miniIframe = document.getElementById('mini-yt-iframe');
-        const mainIframe = document.getElementById('yt-iframe');
+        const iframe = document.getElementById('yt-iframe');
         
         if (isMiniPlaying) {
             isMiniPlaying = false;
             icon.textContent = 'play_arrow';
-            // Ubah src ke kosong untuk mematikan audio/video tanpa menghancurkan elemen
-            if(miniIframe) miniIframe.src = '';
-            if(mainIframe) mainIframe.src = '';
+            if(iframe) {
+                // Ubah src ke kosong untuk mematikan audio/video secara mutlak tanpa refresh halaman
+                iframe.dataset.src = iframe.src;
+                iframe.src = '';
+            }
             showToast('Video dijeda');
         } else {
             isMiniPlaying = true;
             icon.textContent = 'pause';
-            if (activeVideoId) {
-                // Set kembali src dengan parameter autoplay
-                if(miniIframe) miniIframe.src = `https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&controls=0&mute=0&rel=0&playsinline=1`;
-                if(mainIframe) mainIframe.src = `https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&rel=0&fs=0&iv_load_policy=3&modestbranding=1`;
+            if(iframe && iframe.dataset.src) {
+                iframe.src = iframe.dataset.src;
+            } else if(activeVideoId) {
+                iframe.src = `https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&rel=0&fs=0&iv_load_policy=3&modestbranding=1`;
             }
             showToast('Video dilanjutkan');
         }
     }
 
+    function handleContainerClick(e) {
+        // Jika sedang dalam mode mini player, klik pada container akan memperbesar kembali pemutar
+        const container = document.getElementById('player-container-box');
+        if(container.classList.contains('mini-mode')) {
+            expandPlayer();
+        }
+    }
+
     function minimizePlayerToMini() {
+        const container = document.getElementById('player-container-box');
         document.getElementById('player-section').style.display = 'none';
         document.getElementById('main').style.display = 'block';
-        if(currentPlayingVideoStr) {
-            // Pindahkan sumber video ke mini player tanpa reset total struktur DOM
-            document.getElementById('yt-iframe').src = '';
-            document.getElementById('mini-yt-iframe').src = `https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&controls=0&mute=0&rel=0&playsinline=1`;
-            document.getElementById('mini-player').classList.add('active');
-            isMiniPlaying = true;
-            document.getElementById('mini-play-icon').textContent = 'pause';
-        }
+        
+        // Ubah container menjadi mini mode tanpa merusak/mereload iframe di dalamnya!
+        container.classList.add('mini-mode');
+        container.style.display = 'block';
+        document.getElementById('player-meta-info').style.display = 'none';
+        isMiniPlaying = true;
+        document.getElementById('mini-play-icon').textContent = 'pause';
     }
 
     function expandPlayer() {
+        const container = document.getElementById('player-container-box');
         document.getElementById('main').style.display = 'none';
-        document.getElementById('mini-player').classList.remove('active');
         document.getElementById('player-section').style.display = 'block';
-        // Pindahkan sumber video kembali ke pemutar utama dengan mulus
-        document.getElementById('mini-yt-iframe').src = '';
-        if(activeVideoId) {
-            document.getElementById('player-box').innerHTML = `<iframe id="yt-iframe" src="https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&rel=0&fs=0&iv_load_policy=3&modestbranding=1" allow="autoplay"></iframe>`;
-        }
+        
+        // Kembalikan ukuran container ke posisi normal
+        container.classList.remove('mini-mode');
+        document.getElementById('player-meta-info').style.display = 'block';
     }
 
-    function closeMiniPlayer() {
+    function closeMiniPlayer(e) {
+        if(e) e.stopPropagation();
         currentPlayingVideoStr = '';
         activeVideoId = '';
-        document.getElementById('mini-player').classList.remove('active');
+        const container = document.getElementById('player-container-box');
+        container.classList.remove('mini-mode', 'css-fullscreen');
+        container.style.display = 'none';
+        document.getElementById('player-section').style.display = 'none';
         document.getElementById('player-box').innerHTML = '';
-        document.getElementById('mini-yt-iframe').src = '';
-        document.getElementById('player-container-box').classList.remove('css-fullscreen');
-        document.getElementById('fs-icon').textContent = 'fullscreen';
         document.body.style.overflow = '';
     }
 
