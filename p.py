@@ -10,203 +10,161 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>YouTube Clone Responsive</title>
+    <title>Valora Tube Clone</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto', Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
         body { background: #0f0f0f; color: #f1f1f1; overflow-x: hidden; }
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #717171; border-radius: 4px; }
+        ::-webkit-scrollbar { width: 0; height: 0; display: none; }
         a { text-decoration: none; color: inherit; }
 
+        /* ===== ANIMASI LOADING ===== */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+
+        @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+        }
+        .skeleton {
+            background: #272727;
+            background-image: linear-gradient(90deg, #272727 0px, #333 40px, #272727 80px);
+            background-size: 1000px 100%;
+            animation: shimmer 2s infinite linear;
+        }
+
         /* ===== HEADER ===== */
-        #header { position: fixed; top: 0; left: 0; right: 0; height: 56px; background: #0f0f0f; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 100; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .header-left { display: flex; align-items: center; gap: 16px; }
-        .yt-logo { display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; }
-        .yt-logo-text { font-size: 20px; font-weight: 700; letter-spacing: -1px; margin-left: 2px; }
+        #header { position: fixed; top: 0; left: 0; right: 0; height: 56px; background: #0f0f0f; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 100; }
+        .header-left { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+        .logo-icon { color: #ff0000; font-weight: 900; font-style: italic; font-size: 24px; letter-spacing: -2px; }
+        .logo-text { font-size: 20px; font-weight: 500; letter-spacing: -0.5px; }
         
-        .header-right { display: flex; align-items: center; gap: 12px; }
-        .header-icon { background: transparent; border: none; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 8px; border-radius: 50%; }
-        .header-icon:hover { background: rgba(255,255,255,0.1); }
-        .header-icon .material-icons-outlined { font-size: 24px; }
+        .header-right { display: flex; align-items: center; gap: 8px; }
+        .header-icon { background: transparent; border: none; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; width: 40px; height: 40px; border-radius: 50%; }
         
-        /* Search Form Desktop */
-        .search-form-desktop { display: flex; flex: 1; max-width: 600px; align-items: center; margin: 0 40px; }
-        .search-input-wrap-desk { flex: 1; display: flex; align-items: center; border: 1px solid #303030; border-right: none; border-radius: 20px 0 0 20px; background: #121212; height: 40px; padding: 0 16px; }
-        .search-input-wrap-desk input { width: 100%; background: transparent; border: none; color: #fff; font-size: 16px; outline: none; }
-        .search-btn-desk { height: 40px; width: 64px; border: 1px solid #303030; border-radius: 0 20px 20px 0; background: #222; color: #fff; cursor: pointer; }
-        
-        /* Search Form Mobile */
-        .search-form-mobile { display: none; position: absolute; inset: 0; background: #0f0f0f; padding: 0 12px; align-items: center; gap: 12px; z-index: 110; }
+        .search-form-mobile { display: none; position: absolute; inset: 0; background: #0f0f0f; padding: 0 12px; align-items: center; gap: 8px; z-index: 110; }
         .search-form-mobile.active { display: flex; }
         .search-input-wrap-mob { flex: 1; display: flex; align-items: center; background: #222; border-radius: 20px; padding: 0 16px; height: 36px; }
         .search-input-wrap-mob input { flex: 1; background: transparent; border: none; color: #fff; font-size: 15px; outline: none; }
-        .search-btn-mobile-toggle { display: none; background: transparent; border: none; color: #fff; cursor: pointer; padding: 8px; }
 
-        /* ===== SIDEBAR ===== */
-        #sidebar { position: fixed; top: 56px; left: 0; width: 240px; height: calc(100vh - 56px); background: #0f0f0f; overflow-y: auto; padding: 12px 0; z-index: 90; }
-        .sidebar-item { display: flex; align-items: center; gap: 24px; padding: 0 12px; height: 40px; cursor: pointer; border-radius: 10px; margin: 0 12px; transition: background 0.15s; }
-        .sidebar-item:hover { background: rgba(255,255,255,0.1); }
-        .sidebar-item.active { background: rgba(255,255,255,0.15); font-weight: 500; }
-        .sidebar-item .material-icons-outlined { font-size: 24px; flex-shrink: 0; }
-        .sidebar-label { font-size: 14px; }
-        .sidebar-divider { height: 1px; background: rgba(255,255,255,0.1); margin: 12px 0; }
-
-        /* ===== BOTTOM NAV ===== */
-        #bottom-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: 50px; background: #0f0f0f; border-top: 1px solid rgba(255,255,255,0.05); z-index: 100; justify-content: space-around; align-items: center; }
-        .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; flex: 1; height: 100%; cursor: pointer; }
-        .nav-item .material-icons-outlined, .nav-item .material-icons { font-size: 24px; }
-        .nav-item .nav-label { font-size: 10px; margin-top: 3px; }
-        .nav-avatar { width: 24px; height: 24px; border-radius: 50%; background: #ff4e45; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; border: 2px solid transparent; }
-        .nav-item.active .nav-avatar { border-color: #fff; }
+        /* ===== CHIPS ===== */
+        .chips-wrapper { position: sticky; top: 56px; background: #0f0f0f; z-index: 10; padding: 12px 16px; display: flex; gap: 12px; align-items: center; }
+        .explore-icon { background: #272727; padding: 6px; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .chips-bar { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+        .chip { padding: 6px 14px; border-radius: 8px; font-size: 14px; font-weight: 500; white-space: nowrap; border: none; background: #272727; color: #f1f1f1; cursor: pointer; transition: 0.2s; }
+        .chip.active { background: #f1f1f1; color: #0f0f0f; }
 
         /* ===== MAIN CONTENT & GRID ===== */
-        #main { margin-left: 240px; margin-top: 56px; padding: 24px; min-height: 100vh; }
-        .chips-wrapper { position: sticky; top: 56px; background: #0f0f0f; z-index: 10; padding: 12px 0; margin-bottom: 24px; }
-        .chips-bar { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; }
-        .chips-bar::-webkit-scrollbar { display: none; }
-        .chip { padding: 6px 12px; border-radius: 8px; font-size: 14px; font-weight: 500; white-space: nowrap; border: none; background: #272727; color: #f1f1f1; cursor: pointer; }
-        .chip.active { background: #f1f1f1; color: #0f0f0f; }
-        
-        .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 40px 16px; }
-        .vid-card { cursor: pointer; display: flex; flex-direction: column; gap: 12px; }
-        .thumb-wrap { position: relative; width: 100%; aspect-ratio: 16/9; background: #272727; border-radius: 12px; overflow: hidden; }
-        .thumb-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
-        .vid-card:hover .thumb-img { transform: scale(1.05); }
+        #main { margin-top: 56px; padding-bottom: 70px; min-height: 100vh; }
+        .video-grid { display: flex; flex-direction: column; gap: 0; }
+        .vid-card { cursor: pointer; display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+        .thumb-wrap { position: relative; width: 100%; aspect-ratio: 16/9; background: #272727; }
+        .thumb-img { width: 100%; height: 100%; object-fit: cover; }
         .duration-badge { position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.8); color: #fff; font-size: 12px; font-weight: 500; padding: 3px 6px; border-radius: 4px; }
-        .vid-info { display: flex; gap: 12px; align-items: flex-start; }
+        .vid-info { display: flex; gap: 12px; align-items: flex-start; padding: 0 16px; }
         .channel-avatar { width: 36px; height: 36px; border-radius: 50%; background: #444; flex-shrink: 0; overflow: hidden; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:bold; }
         .channel-avatar img { width: 100%; height: 100%; object-fit: cover; }
         .vid-text { flex: 1; }
-        .vid-title { font-size: 16px; font-weight: 500; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 4px; }
-        .vid-meta { font-size: 14px; color: #aaa; }
+        .vid-title { font-size: 15px; font-weight: 500; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 4px; color: #fff; }
+        .vid-meta { font-size: 13px; color: #aaa; }
 
         /* ===== PLAYER SECTION ===== */
-        #player-section { display: none; margin-left: 240px; margin-top: 56px; padding: 24px; max-width: 1280px; }
-        .player-container { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden; transition: all 0.3s ease; }
+        #player-section { display: none; margin-top: 0; padding-bottom: 70px; min-height: 100vh; background: #0f0f0f; z-index: 200; position: absolute; top: 0; left: 0; width: 100%; }
+        .player-container { width: 100%; aspect-ratio: 16/9; background: #000; position: sticky; top: 0; z-index: 105; }
         .player-container iframe { width: 100%; height: 100%; border: none; }
         
-        /* CUSTOM CSS FULLSCREEN */
-        .css-fullscreen { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; max-width: none !important; aspect-ratio: auto !important; z-index: 99999 !important; border-radius: 0 !important; background: #000; display: flex; align-items: center; justify-content: center; }
-        .close-fs-btn { display: none; position: fixed; top: 16px; right: 16px; z-index: 100000; background: rgba(0,0,0,0.6); color: #fff; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; align-items: center; justify-content: center; }
-        .close-fs-btn.show { display: flex; }
-
-        .player-meta { padding: 20px 0; }
-        .player-title { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
-        .channel-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; }
-        .channel-info { display: flex; align-items: center; gap: 12px; }
-        .channel-name { font-weight: 600; font-size: 16px; }
-        .btn-subscribe { background: #f1f1f1; color: #0f0f0f; font-weight: 600; border: none; padding: 10px 20px; border-radius: 20px; font-size: 14px; cursor: pointer; }
+        .player-meta { padding: 12px 16px; }
+        .player-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; line-height: 1.3; }
+        .player-views-date { font-size: 13px; color: #aaa; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
         
-        .action-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
-        .action-row::-webkit-scrollbar { display: none; }
-        .action-pill { display: flex; align-items: center; gap: 6px; background: #272727; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
-        .action-pill:hover { background: #3f3f3f; }
+        .action-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 16px; scrollbar-width: none; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 16px; }
+        .action-pill { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; color: #fff; }
+        .action-pill .material-icons-outlined { font-size: 18px; }
         
-        .comments-box { background: #272727; border-radius: 12px; padding: 16px; margin-top: 16px; }
-
-        /* ===== PROFILE / ANDA TAB ===== */
-        #profile-section { display: none; margin-left: 240px; margin-top: 56px; padding: 24px; min-height: 100vh; }
-        .profile-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
-        .profile-avatar { width: 72px; height: 72px; border-radius: 50%; background: #ff4e45; color: #fff; font-size: 32px; display: flex; align-items: center; justify-content: center; }
-        .profile-name { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
-        .profile-handle { font-size: 14px; color: #aaa; margin-bottom: 12px; }
+        .channel-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+        .channel-info { display: flex; align-items: center; gap: 10px; }
+        .channel-name { font-weight: 500; font-size: 15px; color: #fff; }
+        .channel-subs { font-size: 12px; color: #aaa; }
+        .btn-subscribe { background: #fff; color: #000; font-weight: 500; border: none; padding: 8px 16px; border-radius: 20px; font-size: 14px; }
         
-        .horizontal-list { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 16px; scrollbar-width: none; }
-        .horizontal-list::-webkit-scrollbar { display: none; }
-        .hist-card { width: 160px; flex-shrink: 0; cursor: pointer; }
-        .hist-thumb { width: 100%; aspect-ratio: 16/9; background: #272727; border-radius: 8px; margin-bottom: 8px; object-fit: cover; }
-        .hist-title { font-size: 14px; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 4px; }
-        .hist-channel { font-size: 13px; color: #aaa; }
+        .comments-box { background: rgba(255,255,255,0.1); border-radius: 12px; padding: 12px 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500; }
+
+        /* ===== MINI PLAYER ===== */
+        #mini-player { display: none; position: fixed; bottom: 50px; left: 0; right: 0; height: 54px; background: #212121; z-index: 99; align-items: center; padding: 0 12px; border-bottom: 1px solid rgba(0,0,0,0.5); }
+        #mini-player.active { display: flex; animation: fadeIn 0.3s; }
+        .mini-thumb { width: 90px; height: 42px; background: #000; margin-right: 12px; cursor: pointer; }
+        .mini-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .mini-info { flex: 1; overflow: hidden; white-space: nowrap; cursor: pointer; }
+        .mini-title { font-size: 13px; font-weight: 500; color: #fff; text-overflow: ellipsis; overflow: hidden; }
+        .mini-channel { font-size: 12px; color: #aaa; text-overflow: ellipsis; overflow: hidden; }
+        .mini-actions { display: flex; align-items: center; gap: 16px; color: #fff; }
+
+        /* ===== BOTTOM NAV ===== */
+        #bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 50px; background: #0f0f0f; z-index: 100; display: flex; justify-content: space-around; align-items: center; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; flex: 1; height: 100%; cursor: pointer; opacity: 0.7; }
+        .nav-item.active { opacity: 1; color: #fff; }
+        .nav-item.active .material-icons-outlined { display: none; }
+        .nav-item:not(.active) .material-icons { display: none; }
+        .nav-item .material-icons, .nav-item .material-icons-outlined { font-size: 24px; }
+        .nav-item .nav-label { font-size: 10px; margin-top: 3px; }
         
-        #scroll-loader { display: none; justify-content: center; padding: 40px 0; grid-column: 1 / -1; }
-        .spinner { width: 32px; height: 32px; border: 3px solid #333; border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        .nav-avatar { width: 24px; height: 24px; border-radius: 50%; background: #ff4e45; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; border: 2px solid transparent; }
+        .nav-item.active .nav-avatar { border-color: #fff; }
 
-        /* =========================================
-           MEDIA QUERIES (MODE HP / MOBILE)
-           ========================================= */
-        @media (max-width: 792px) {
-            #sidebar { display: none; }
-            #bottom-nav { display: flex; }
-            
-            #main { margin-left: 0; padding: 0; padding-bottom: 60px; }
-            .chips-wrapper { padding: 12px 16px; margin-bottom: 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-            
-            .search-form-desktop { display: none; }
-            .search-btn-mobile-toggle { display: block; }
-            
-            .video-grid { display: flex; flex-direction: column; gap: 0; }
-            .vid-card { margin-bottom: 16px; gap: 12px; }
-            .thumb-wrap { border-radius: 0; }
-            .vid-info { padding: 0 16px; }
-            .vid-title { font-size: 15px; }
-            .vid-meta { font-size: 13px; }
-            
-            #player-section { margin-left: 0; padding: 0; padding-bottom: 60px; }
-            .player-container { border-radius: 0; position: sticky; top: 0; z-index: 105; }
-            .player-meta { padding: 12px 16px; }
-            .player-title { font-size: 18px; }
-
-            #profile-section { margin-left: 0; padding: 0; padding-bottom: 60px; }
-            .profile-header { padding: 24px 16px; margin-bottom: 0; }
-            .horizontal-list { padding: 0 16px 16px; }
-        }
+        /* ===== BOTTOM SHEET PENGATURAN ===== */
+        #sheet-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; opacity: 0; transition: opacity 0.3s; }
+        #sheet-overlay.show { display: block; opacity: 1; }
+        #settings-sheet { display: flex; flex-direction: column; position: fixed; bottom: -100%; left: 0; right: 0; background: #212121; border-radius: 16px 16px 0 0; z-index: 10000; transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1); padding-bottom: 24px; max-height: 80vh; overflow-y: auto; }
+        #settings-sheet.show { bottom: 0; }
+        .sheet-handle { width: 40px; height: 4px; background: #555; border-radius: 2px; margin: 12px auto 8px; }
+        .setting-item { display: flex; align-items: center; gap: 16px; padding: 14px 24px; color: #f1f1f1; font-size: 15px; cursor: pointer; transition: background 0.2s; }
+        .setting-item:hover { background: rgba(255,255,255,0.1); }
+        .setting-item .material-icons-outlined { font-size: 24px; color: #f1f1f1; }
+        
+        /* Loader Spinner */
+        #scroll-loader { display: none; justify-content: center; padding: 20px 0; }
+        .spinner { width: 30px; height: 30px; border: 3px solid #333; border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
     </style>
 </head>
 <body>
 
 <header id="header">
-    <div class="header-left">
-        <a class="yt-logo" href="#" onclick="goHome(event, document.querySelector('.nav-item'))">
-            <svg viewBox="0 0 24 24" style="height:22px; color:#FF0000; fill:currentColor;"><path d="M21.58,7.19C21.35,6.33 20.67,5.65 19.81,5.42C18.25,5 12,5 12,5C12,5 5.75,5 4.19,5.42C3.33,5.65 2.65,6.33 2.42,7.19C2,8.75 2,12 2,12C2,12 2,15.25 2.42,16.81C2.65,17.67 3.33,18.35 4.19,18.58C5.75,19 12,19 12,19C12,19 18.25,19 19.81,18.58C20.67,18.35 21.35,17.67 21.58,16.81C22,15.25 22,12 22,12C22,12 22,8.75 21.58,7.19Z"/><path d="M10,15L15.5,12L10,9V15Z" fill="white"/></svg>
-            <span class="yt-logo-text">YouTube</span>
-        </a>
+    <div class="header-left" onclick="goHome(event)">
+        <span class="logo-icon">a</span>
+        <span class="logo-text">Valora Tube</span>
     </div>
-
-    <!-- Search Desktop -->
-    <form class="search-form-desktop" onsubmit="searchVideos(event, 'desktop')">
-        <div class="search-input-wrap-desk">
-            <input type="text" id="keyword-desktop" placeholder="Telusuri" autocomplete="off">
-        </div>
-        <button type="submit" class="search-btn-desk"><span class="material-icons-outlined">search</span></button>
-    </form>
 
     <div class="header-right">
-        <button class="search-btn-mobile-toggle" onclick="toggleMobileSearch(true)"><span class="material-icons-outlined">search</span></button>
-        <div class="nav-avatar" style="margin-left:8px; width:32px; height:32px; cursor:pointer;" onclick="showProfile(document.querySelector('.nav-item:last-child'))">t</div>
+        <button class="header-icon" onclick="toggleSearch(true)"><span class="material-icons-outlined">search</span></button>
+        <button class="header-icon"><span class="material-icons-outlined">mic</span></button>
+        <button class="header-icon"><span class="material-icons-outlined">more_vert</span></button>
     </div>
     
-    <!-- Search Mobile -->
-    <form class="search-form-mobile" id="mobile-search-form" onsubmit="searchVideos(event, 'mobile')">
-        <button type="button" class="header-icon" onclick="toggleMobileSearch(false)"><span class="material-icons-outlined">arrow_back</span></button>
+    <form class="search-form-mobile" id="mobile-search-form" onsubmit="searchVideos(event)">
+        <button type="button" class="header-icon" onclick="toggleSearch(false)"><span class="material-icons-outlined">arrow_back</span></button>
         <div class="search-input-wrap-mob">
-            <input type="text" id="keyword-mobile" placeholder="Telusuri YouTube" autocomplete="off">
+            <input type="text" id="keyword-mobile" placeholder="Telusuri Valora Tube" autocomplete="off">
         </div>
-        <button type="button" class="header-icon" style="background:#222; border-radius:50%; width:36px; height:36px;" onclick="searchVideos(event, 'mobile')"><span class="material-icons-outlined" style="font-size:20px;">search</span></button>
+        <button type="button" class="header-icon" style="background:#222;" onclick="searchVideos(event)"><span class="material-icons-outlined" style="font-size:20px;">search</span></button>
     </form>
 </header>
 
-<nav id="sidebar">
-    <div class="sidebar-item active" onclick="goHome(event)"><span class="material-icons-outlined">home</span><span class="sidebar-label">Beranda</span></div>
-    <div class="sidebar-item" onclick="loadShorts(this)"><span class="material-icons-outlined">play_circle</span><span class="sidebar-label">Shorts</span></div>
-    <div class="sidebar-divider"></div>
-    <div class="sidebar-item" onclick="showProfile(this)"><span class="material-icons-outlined">history</span><span class="sidebar-label">Histori</span></div>
-    <div class="sidebar-item" onclick="showProfile(this)"><span class="material-icons-outlined">schedule</span><span class="sidebar-label">Tonton Nanti</span></div>
-</nav>
-
 <main id="main">
     <div class="chips-wrapper" id="chips-container">
+        <div class="explore-icon"><span class="material-icons-outlined" style="font-size: 20px;">explore</span></div>
         <div class="chips-bar">
             <button class="chip active" onclick="chipClick(this,'')">Semua</button>
             <button class="chip" onclick="chipClick(this,'Musik')">Musik</button>
-            <button class="chip" onclick="chipClick(this,'Gaming')">Gaming</button>
+            <button class="chip" onclick="chipClick(this,'Game')">Game</button>
+            <button class="chip" onclick="chipClick(this,'Podcast')">Podcast</button>
             <button class="chip" onclick="chipClick(this,'Berita')">Berita</button>
-            <button class="chip" onclick="chipClick(this,'Live')">Live</button>
+            <button class="chip" onclick="chipClick(this,'Cuplikan')">Cuplikan</button>
         </div>
     </div>
     <div class="video-grid" id="video-grid"></div>
@@ -214,67 +172,101 @@ HTML_TEMPLATE = """
 </main>
 
 <div id="player-section">
-    <!-- Tombol Close Fullscreen -->
-    <button id="close-fs" class="close-fs-btn" onclick="toggleCustomFullscreen()"><span class="material-icons-outlined">close_fullscreen</span></button>
-    
     <div class="player-container" id="player-box"></div>
-    
-    <div class="player-meta">
+    <div class="player-meta fade-in">
         <div class="player-title" id="player-title">Judul Video</div>
+        <div class="player-views-date">
+            <span id="player-views">572 rb tampilan • 3 hari yang lalu</span>
+            <span><span class="material-icons" style="font-size:14px; vertical-align:middle;">thumb_up</span> 3,2 rb</span>
+        </div>
+        
+        <div class="action-row">
+            <!-- Tambahan Tombol Pengaturan -->
+            <div class="action-pill" onclick="openSettings()"><span class="material-icons-outlined">settings</span> Pengaturan</div>
+            <div class="action-pill"><span class="material-icons-outlined">share</span> Bagikan</div>
+            <div class="action-pill" onclick="saveTontonNanti()"><span class="material-icons-outlined">playlist_add</span> Simpan</div>
+            <div class="action-pill"><span class="material-icons-outlined">headphones</span> Audio</div>
+        </div>
         
         <div class="channel-row">
             <div class="channel-info">
-                <img id="player-channel-avatar" src="" style="width:40px; height:40px; border-radius:50%; object-fit:cover; background:#444;">
+                <img id="player-channel-avatar" src="" style="width:36px; height:36px; border-radius:50%; object-fit:cover; background:#444;">
                 <div>
                     <div class="channel-name" id="player-channel-name">Nama Channel</div>
-                    <div style="font-size: 12px; color: #aaa;">1,2 jt subscriber</div>
+                    <div class="channel-subs">1,2 jt pelanggan</div>
                 </div>
             </div>
-            <button class="btn-subscribe">Subscribe</button>
-        </div>
-        
-        <!-- Tombol Aksi yang Murni Berfungsi -->
-        <div class="action-row">
-            <div class="action-pill" onclick="alert('Disukai!')"><span class="material-icons-outlined">thumb_up</span> Suka</div>
-            <div class="action-pill" onclick="saveTontonNanti()"><span class="material-icons-outlined">schedule</span> Tonton Nanti</div>
-            <div class="action-pill" onclick="toggleCustomFullscreen()"><span class="material-icons-outlined">fullscreen</span> Perbesar</div>
+            <button class="btn-subscribe">Berlangganan</button>
         </div>
         
         <div class="comments-box">
-            <div style="font-weight:700; margin-bottom:8px; font-size:14px;">Komentar <span style="font-weight:400; color:#aaa;">245</span></div>
-            <div style="display:flex; gap:10px; font-size:13px;">
-                <div style="width:24px; height:24px; border-radius:50%; background:#555;"></div>
-                <div style="flex:1;">Tulis komentar...</div>
-            </div>
+            <span>Komentar</span>
+            <span class="material-icons-outlined">unfold_more</span>
         </div>
+        
+        <div style="font-size: 16px; font-weight: 700; margin-bottom: 12px;">Video lainnya</div>
+        <div class="video-grid" id="related-grid"></div>
     </div>
 </div>
 
-<div id="profile-section">
-    <div class="profile-header">
-        <div class="profile-avatar">t</div>
-        <div>
-            <div class="profile-name">teu apal</div>
-            <div class="profile-handle">@teuapal</div>
-        </div>
+<!-- Bottom Sheet Pengaturan (Settings Menu) -->
+<div id="sheet-overlay" onclick="closeSettings()"></div>
+<div id="settings-sheet">
+    <div class="sheet-handle"></div>
+    <div id="main-settings">
+        <div class="setting-item" onclick="alert('Mode ulang diaktifkan')"><span class="material-icons-outlined">repeat</span> Mode ulang (Tidak diulang)</div>
+        <div class="setting-item" onclick="alert('Ubah ukuran segera hadir')"><span class="material-icons-outlined">aspect_ratio</span> Mode ubah ukuran (Pas)</div>
+        <div class="setting-item" onclick="alert('Kecepatan 1.5x diaktifkan')"><span class="material-icons-outlined">speed</span> Kecepatan pemutaran (1.0x)</div>
+        <div class="setting-item" onclick="alert('Pewaktu dimatikan')"><span class="material-icons-outlined">dark_mode</span> Pewaktu tidur (Mati)</div>
+        <div class="setting-item" onclick="showQualitySettings()"><span class="material-icons-outlined">hd</span> Kualitas (<span id="current-quality">Otomatis</span>)</div>
+        <div class="setting-item" onclick="alert('Audio default')"><span class="material-icons-outlined">music_note</span> Trek audio (Indonesia - asli atau utama)</div>
+        <div class="setting-item" onclick="alert('Takarir dimatikan')"><span class="material-icons-outlined">closed_caption</span> Takarir (Tidak ada)</div>
+        <div class="setting-item" onclick="alert('Statistik dibuka')"><span class="material-icons-outlined">info</span> Statistik untuk kutu buku</div>
     </div>
-    
-    <div style="padding: 16px; font-size: 18px; font-weight: 700;">Histori</div>
-    <div class="horizontal-list" id="history-scroll"></div>
+    <div id="quality-settings" style="display:none;">
+        <div class="setting-item" onclick="showMainSettings()" style="border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom:8px;"><span class="material-icons-outlined">arrow_back</span> Kembali</div>
+        <div class="setting-item" onclick="setQuality(1080)">1080p Premium HD</div>
+        <div class="setting-item" onclick="setQuality(720)">720p HD</div>
+        <div class="setting-item" onclick="setQuality(480)">480p</div>
+        <div class="setting-item" onclick="setQuality(360)">360p Data Saver</div>
+    </div>
+</div>
 
-    <div style="padding: 16px; font-size: 18px; font-weight: 700;">Tonton Nanti</div>
-    <div class="horizontal-list" id="watch-later-scroll"></div>
+<!-- Mini Player Melayang -->
+<div id="mini-player">
+    <div class="mini-thumb" onclick="expandPlayer()">
+        <img id="mini-thumb-img" src="">
+    </div>
+    <div class="mini-info" onclick="expandPlayer()">
+        <div class="mini-title" id="mini-title">Judul Video</div>
+        <div class="mini-channel" id="mini-channel">Channel</div>
+    </div>
+    <div class="mini-actions">
+        <span class="material-icons" onclick="expandPlayer()">play_arrow</span>
+        <span class="material-icons" onclick="closeMiniPlayer()">close</span>
+    </div>
 </div>
 
 <nav id="bottom-nav">
     <div class="nav-item active" onclick="goHome(event, this)">
-        <span class="material-icons-outlined">home</span><span class="nav-label">Beranda</span>
+        <span class="material-icons-outlined">home</span><span class="material-icons">home</span>
+        <span class="nav-label">Beranda</span>
     </div>
     <div class="nav-item" onclick="loadShorts(this)">
-        <span class="material-icons-outlined">play_circle</span><span class="nav-label">Shorts</span>
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M17.77,10.32l-1.2-.5L18,9.06a3.74,3.74,0,0,0-3.5-6.62L6,6.94a3.74,3.74,0,0,0,.23,6.74l1.2.49L6,14.93a3.75,3.75,0,0,0,3.5,6.63l8.5-4.5a3.74,3.74,0,0,0-.23-6.74ZM10,14.65V9.35L14.75,12Z"/></svg>
+        <span class="nav-label">Shorts</span>
     </div>
-    <div class="nav-item" onclick="showProfile(this)">
-        <div class="nav-avatar">t</div><span class="nav-label">Anda</span>
+    <div class="nav-item">
+        <span class="material-icons-outlined">subscriptions</span><span class="material-icons">subscriptions</span>
+        <span class="nav-label">Langganan</span>
+    </div>
+    <div class="nav-item">
+        <span class="material-icons-outlined">trending_up</span><span class="material-icons">trending_up</span>
+        <span class="nav-label">Trending</span>
+    </div>
+    <div class="nav-item">
+        <div class="nav-avatar">V</div>
+        <span class="nav-label">Valora</span>
     </div>
 </nav>
 
@@ -283,6 +275,7 @@ HTML_TEMPLATE = """
     let currentOffset = 0;
     let isLoadingMore = false;
     let currentPlayingVideoStr = ''; 
+    let activeData = [];
     
     window.addEventListener('DOMContentLoaded', () => { loadHome(); });
     
@@ -298,7 +291,11 @@ HTML_TEMPLATE = """
         showSkeletons();
         currentQuery = '';
         currentOffset = 0;
-        try { const res = await fetch('/api/home'); const data = await res.json(); renderGrid(data); } catch(e){}
+        try { 
+            const res = await fetch('/api/home'); 
+            activeData = await res.json(); 
+            renderGrid(activeData); 
+        } catch(e){}
     }
 
     async function loadMoreData() {
@@ -309,52 +306,58 @@ HTML_TEMPLATE = """
             const data = await res.json();
             if (data.length > 0) { 
                 currentOffset += data.length; 
-                appendToGrid(data); 
+                activeData = activeData.concat(data);
+                appendToGrid(data, 'video-grid'); 
             }
         } catch(e){} finally { isLoadingMore = false; document.getElementById('scroll-loader').style.display = 'none'; }
     }
 
-    function toggleMobileSearch(show) {
+    function toggleSearch(show) {
         const form = document.getElementById('mobile-search-form');
         const input = document.getElementById('keyword-mobile');
         if (show) { form.classList.add('active'); input.focus(); } 
         else { form.classList.remove('active'); input.value = ''; }
     }
 
-    function searchVideos(e, source) {
+    function searchVideos(e) {
         e.preventDefault(); 
-        const q = document.getElementById(source === 'desktop' ? 'keyword-desktop' : 'keyword-mobile').value.trim();
+        const q = document.getElementById('keyword-mobile').value.trim();
         if (q) { 
             activateNav(document.querySelector('.nav-item')); 
             currentQuery = q; currentOffset = 0; 
-            if(source === 'mobile') toggleMobileSearch(false); 
+            toggleSearch(false); 
             showSkeletons();
-            fetch('/api/search?q=' + encodeURIComponent(q)).then(r=>r.json()).then(d => { currentOffset=d.length; renderGrid(d); });
+            fetch('/api/search?q=' + encodeURIComponent(q)).then(r=>r.json()).then(d => { 
+                currentOffset=d.length; activeData = d; renderGrid(d); 
+            });
         }
     }
 
     function chipClick(btn, query) {
         document.querySelectorAll('.chip').forEach(c => c.classList.remove('active')); btn.classList.add('active');
-        if (query) { currentQuery = query; currentOffset = 0; showSkeletons(); fetch('/api/search?q=' + encodeURIComponent(query)).then(r=>r.json()).then(d => { currentOffset=d.length; renderGrid(d); }); } 
+        if (query) { currentQuery = query; currentOffset = 0; showSkeletons(); fetch('/api/search?q=' + encodeURIComponent(query)).then(r=>r.json()).then(d => { currentOffset=d.length; activeData=d; renderGrid(d); }); } 
         else loadHome();
     }
 
     function activateNav(el) {
         if(!el) return;
-        document.querySelectorAll('.nav-item, .sidebar-item').forEach(n => n.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
         el.classList.add('active');
         
         document.getElementById('main').style.display = 'block';
         document.getElementById('player-section').style.display = 'none';
-        document.getElementById('profile-section').style.display = 'none';
-        document.getElementById('player-box').innerHTML = ''; 
+        
+        if(currentPlayingVideoStr) {
+            document.getElementById('mini-player').classList.add('active');
+        }
     }
 
     function goHome(e, el) { 
         if (e) e.preventDefault(); 
         activateNav(el || document.querySelector('.nav-item')); 
-        document.getElementById('chips-container').style.display = 'block';
-        loadHome(); 
+        document.getElementById('chips-container').style.display = 'flex';
+        window.scrollTo(0,0);
+        if(currentQuery !== '') loadHome(); 
     }
     
     function loadShorts(el) {
@@ -362,32 +365,7 @@ HTML_TEMPLATE = """
         document.getElementById('chips-container').style.display = 'none';
         showSkeletons();
         currentQuery = 'shorts'; 
-        fetch('/api/shorts').then(r=>r.json()).then(d => { renderGrid(d); });
-    }
-
-    function showProfile(el) {
-        if(!el) return;
-        activateNav(el);
-        document.getElementById('main').style.display = 'none';
-        document.getElementById('profile-section').style.display = 'block';
-        
-        const hist = JSON.parse(localStorage.getItem('yt_history') || '[]');
-        const wl = JSON.parse(localStorage.getItem('yt_watch_later') || '[]');
-        
-        const renderList = (list) => {
-            if(list.length === 0) return '<div style="color:#aaa; font-size:13px; padding-left:16px;">Belum ada video.</div>';
-            return list.slice(0,10).map(v => {
-                const vStr = encodeURIComponent(JSON.stringify(v));
-                return `<div class="hist-card" onclick="playVideo('${vStr}')">
-                    <img src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" class="hist-thumb">
-                    <div class="hist-title">${v.title}</div>
-                    <div class="hist-channel">${v.channel}</div>
-                </div>`;
-            }).join('');
-        };
-
-        document.getElementById('history-scroll').innerHTML = renderList(hist);
-        document.getElementById('watch-later-scroll').innerHTML = renderList(wl);
+        fetch('/api/shorts').then(r=>r.json()).then(d => { activeData=d; renderGrid(d); });
     }
 
     function saveTontonNanti() {
@@ -395,72 +373,104 @@ HTML_TEMPLATE = """
         try {
             let v = JSON.parse(decodeURIComponent(currentPlayingVideoStr));
             let wl = JSON.parse(localStorage.getItem('yt_watch_later') || '[]');
-            
             if(!wl.find(x => x.id === v.id)) {
-                wl.unshift(v);
-                localStorage.setItem('yt_watch_later', JSON.stringify(wl));
-                alert('Berhasil disimpan ke Tonton Nanti!');
-            } else {
-                alert('Video sudah ada di Tonton Nanti.');
+                wl.unshift(v); localStorage.setItem('yt_watch_later', JSON.stringify(wl));
+                alert('Tersimpan di playlist');
             }
         } catch(e){}
     }
 
-    function toggleCustomFullscreen() {
-        const pb = document.getElementById('player-box');
-        const btn = document.getElementById('close-fs');
-        
-        pb.classList.toggle('css-fullscreen');
-        
-        if(pb.classList.contains('css-fullscreen')) {
-            btn.classList.add('show');
-            document.body.style.overflow = 'hidden'; 
-        } else {
-            btn.classList.remove('show');
-            document.body.style.overflow = '';
+    /* LOGIKA MENU PENGATURAN (BOTTOM SHEET) */
+    function openSettings() {
+        document.getElementById('sheet-overlay').classList.add('show');
+        setTimeout(() => document.getElementById('settings-sheet').classList.add('show'), 10);
+    }
+    
+    function closeSettings() {
+        document.getElementById('settings-sheet').classList.remove('show');
+        setTimeout(() => {
+            document.getElementById('sheet-overlay').classList.remove('show');
+            showMainSettings();
+        }, 300);
+    }
+    
+    function showQualitySettings() {
+        document.getElementById('main-settings').style.display = 'none';
+        document.getElementById('quality-settings').style.display = 'block';
+    }
+    
+    function showMainSettings() {
+        document.getElementById('main-settings').style.display = 'block';
+        document.getElementById('quality-settings').style.display = 'none';
+    }
+    
+    function setQuality(res) {
+        document.getElementById('current-quality').textContent = res + 'p';
+        const iframe = document.querySelector('#player-box iframe');
+        if(iframe) {
+            let src = iframe.src;
+            src = src.split('&vq=')[0]; // Hapus parameter kualitas lama jika ada
+            iframe.src = src + '&vq=' + res;
         }
+        closeSettings();
+        alert('Kualitas video diatur ke ' + res + 'p');
     }
 
     function playVideo(videoStr) {
         let v; try { v = JSON.parse(decodeURIComponent(videoStr)); } catch(e){ return; }
         currentPlayingVideoStr = videoStr; 
         
-        let hist = JSON.parse(localStorage.getItem('yt_history') || '[]');
-        hist = hist.filter(x => x.id !== v.id); hist.unshift(v);
-        if(hist.length > 50) hist.pop(); localStorage.setItem('yt_history', JSON.stringify(hist));
-
         document.getElementById('main').style.display = 'none';
-        document.getElementById('profile-section').style.display = 'none';
+        document.getElementById('mini-player').classList.remove('active');
         
-        // Matikan class fullscreen jika video baru di klik
-        document.getElementById('player-box').classList.remove('css-fullscreen');
-        document.getElementById('close-fs').classList.remove('show');
-        document.body.style.overflow = '';
-
         const ps = document.getElementById('player-section');
         document.getElementById('player-title').textContent = v.title;
-        document.getElementById('player-channel-name').textContent = v.channel || 'Channel Name';
+        document.getElementById('player-channel-name').textContent = v.channel || 'Valora Music';
         document.getElementById('player-channel-avatar').src = v.avatar || '';
+        document.getElementById('player-views').textContent = (v.views || '123 rb tampilan') + ' • ' + (v.published || 'Baru saja');
         
-        // PENTING: Menghapus properti `allow="fullscreen"` dan menambahkan `fs=0` untuk menonaktifkan API bawaan YT
         document.getElementById('player-box').innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0&fs=0" allow="autoplay"></iframe>`;
         
+        let related = [...activeData].sort(() => 0.5 - Math.random()).slice(0, 5);
+        document.getElementById('related-grid').innerHTML = '';
+        appendToGrid(related, 'related-grid');
+
+        document.getElementById('mini-thumb-img').src = `https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`;
+        document.getElementById('mini-title').textContent = v.title;
+        document.getElementById('mini-channel').textContent = v.channel;
+
         ps.style.display = 'block'; window.scrollTo(0,0);
     }
 
-    function showSkeletons() { document.getElementById('video-grid').innerHTML = Array(8).fill(`<div class="vid-card"><div class="thumb-wrap"></div><div class="vid-info"><div class="channel-avatar"></div><div class="vid-text"><div style="height:14px; background:#272727; margin-bottom:8px; width:90%; border-radius:4px;"></div><div style="height:12px; background:#272727; width:60%; border-radius:4px;"></div></div></div></div>`).join(''); }
-
-    function renderGrid(data) {
-        const g = document.getElementById('video-grid'); g.innerHTML = ''; appendToGrid(data);
+    function expandPlayer() {
+        document.getElementById('main').style.display = 'none';
+        document.getElementById('mini-player').classList.remove('active');
+        document.getElementById('player-section').style.display = 'block';
     }
 
-    function appendToGrid(data) {
-        const g = document.getElementById('video-grid');
+    function closeMiniPlayer() {
+        currentPlayingVideoStr = '';
+        document.getElementById('mini-player').classList.remove('active');
+        document.getElementById('player-box').innerHTML = '';
+    }
+
+    function showSkeletons() { 
+        document.getElementById('video-grid').innerHTML = Array(6).fill(`<div class="vid-card"><div class="thumb-wrap skeleton" style="border-radius:0;"></div><div class="vid-info"><div class="channel-avatar skeleton"></div><div class="vid-text"><div class="skeleton" style="height:14px; margin-bottom:8px; width:90%; border-radius:4px;"></div><div class="skeleton" style="height:12px; width:60%; border-radius:4px;"></div></div></div></div>`).join(''); 
+    }
+
+    function renderGrid(data) {
+        document.getElementById('video-grid').innerHTML = ''; 
+        appendToGrid(data, 'video-grid');
+    }
+
+    function appendToGrid(data, targetId) {
+        const g = document.getElementById(targetId);
         data.forEach(v => {
-            const card = document.createElement('div'); card.className = 'vid-card';
+            const card = document.createElement('div'); 
+            card.className = 'vid-card fade-in';
             const vStr = encodeURIComponent(JSON.stringify(v));
             card.onclick = () => playVideo(vStr);
-            let initial = v.channel ? v.channel.charAt(0).toUpperCase() : '?';
+            let initial = v.channel ? v.channel.charAt(0).toUpperCase() : 'V';
             let avatarHtml = v.avatar ? `<div class="channel-avatar"><img src="${v.avatar}"></div>` : `<div class="channel-avatar">${initial}</div>`;
             let meta = [v.channel, v.views, v.published].filter(Boolean).join(' • ');
             
@@ -574,21 +584,6 @@ def api_shorts():
             if len(results) >= 20: break
     except Exception: pass
     return jsonify(results)
-
-@app.route("/api/suggest")
-def api_suggest():
-    query = request.args.get("q", "").strip()
-    if not query or len(query) < 2: return jsonify([])
-    suggestions = set()
-    try:
-        videos = scrapetube.get_search(query, limit=5)
-        for v in videos:
-            title = v.get("title", {}).get("runs", [{}])[0].get("text", "")
-            if title and query.lower() in title.lower(): suggestions.add(title)
-            byline = v.get("longBylineText", {}).get("runs", [{}])[0].get("text", "")
-            if byline and query.lower() in byline.lower(): suggestions.add(byline)
-    except Exception: pass
-    return jsonify(list(suggestions)[:7])
 
 if __name__ == "__main__":
     app.run(debug=True, port=2000)
