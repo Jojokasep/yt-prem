@@ -89,6 +89,7 @@ HTML_TEMPLATE = """
             position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%) translateY(100px);
             background: #333; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 14px;
             z-index: 99999; transition: transform 0.3s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            pointer-events: none;
         }
         #toast.show { transform: translateX(-50%) translateY(0); }
 
@@ -145,11 +146,9 @@ HTML_TEMPLATE = """
 
         #player-section { display: none; margin-top: 0; padding-bottom: 70px; min-height: 100vh; background: var(--bg-color); z-index: 200; position: absolute; top: 0; left: 0; width: 100%; }
         
-        /* ===== PEMUTAR UTAMA & MINI PLAYER CERDAS ===== */
         .player-container { width: 100%; aspect-ratio: 16/9; background: #000; position: sticky; top: 56px; z-index: 105; transition: all 0.3s ease; }
         .player-container iframe { width: 100%; height: 100%; border: none; pointer-events: auto; }
         
-        /* Mini player hanya aktif jika class 'mini-mode' ditambahkan DAN posisi scroll melewati video utama */
         .player-container.mini-mode {
             position: fixed !important;
             bottom: 64px !important;
@@ -425,6 +424,7 @@ HTML_TEMPLATE = """
     let isSubscribed = false;
     let isMiniPlaying = true;
     let activeVideoId = '';
+    let currentResolution = '';
 
     window.addEventListener('DOMContentLoaded', () => { 
         loadHome(); 
@@ -443,7 +443,7 @@ HTML_TEMPLATE = """
         const t = document.getElementById('toast');
         t.textContent = msg;
         t.classList.add('show');
-        setTimeout(() => t.classList.remove('show'), 2500);
+        setTimeout(() => t.classList.remove('show'), 2000);
     }
 
     function toggleTheme() {
@@ -473,7 +473,6 @@ HTML_TEMPLATE = """
             toggleSearch(false);
             history.pushState({page: 'home'}, '', '');
         } else if (playerSec.style.display === 'block') {
-            // Jika sedang di halaman player dan tombol back ditekan, kembali ke posisi atas / beranda
             goHome(null);
             history.pushState({page: 'home'}, '', '');
         } else {
@@ -481,7 +480,6 @@ HTML_TEMPLATE = """
         }
     });
 
-    // ===== SCROLL CERDAS: MINI PLAYER MUNCUL JIKA SCROLL LEWATI VIDEO =====
     window.addEventListener('scroll', () => {
         if (isLoadingMore) return;
         
@@ -489,20 +487,16 @@ HTML_TEMPLATE = """
         const playerDisplay = document.getElementById('player-section').style.display;
         const container = document.getElementById('player-container-box');
 
-        // Infinite scroll beranda / search
         if (mainDisplay !== 'none' && currentQuery !== 'shorts') {
             if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 300) {
                 loadMoreData();
             }
         }
         
-        // Infinite scroll di halaman pemutar (video terkait)
         if (playerDisplay === 'block') {
             if (window.scrollY > 240) {
-                // Jika di-scroll ke bawah melewati posisi player, aktifkan mini-mode otomatis
                 container.classList.add('mini-mode');
             } else {
-                // Jika di-scroll kembali ke atas melihat player, kembalikan ke mode normal
                 container.classList.remove('mini-mode');
             }
 
@@ -716,7 +710,6 @@ HTML_TEMPLATE = """
         document.getElementById('main').style.display = 'block';
         document.getElementById('player-section').style.display = 'none';
         
-        // Sembunyikan mini player saat berpindah menu utama
         const container = document.getElementById('player-container-box');
         container.classList.remove('mini-mode');
         container.style.display = 'none';
@@ -876,9 +869,17 @@ HTML_TEMPLATE = """
     }
     
     function setQuality(res) {
+        currentResolution = res;
         document.getElementById('current-quality').textContent = res + 'p';
         closeSettings();
-        showToast('Kualitas video diatur ke ' + res + 'p');
+        showToast('Resolusi diubah ke ' + res + 'p');
+        
+        if (activeVideoId) {
+            const iframe = document.getElementById('yt-iframe');
+            if (iframe) {
+                iframe.src = `https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&rel=0&fs=0&iv_load_policy=3&modestbranding=1&vq=${res}p`;
+            }
+        }
     }
 
     function toggleCustomFullscreen() {
@@ -917,10 +918,10 @@ HTML_TEMPLATE = """
         document.getElementById('player-channel-avatar').src = v.avatar || '';
         document.getElementById('player-views').textContent = (v.views || '123 rb tampilan') + ' • ' + (v.published || 'Baru saja');
         
-        // Tampilkan loading skeleton pada bagian video terkait sebelum dimuat
         document.getElementById('related-grid').innerHTML = Array(4).fill(`<div class="vid-card"><div class="thumb-wrap skeleton" style="border-radius:8px;"></div><div class="vid-info"><div class="vid-text"><div class="skeleton" style="height:14px; margin-bottom:8px; width:90%; border-radius:4px;"></div><div class="skeleton" style="height:12px; width:60%; border-radius:4px;"></div></div></div></div>`).join('');
 
-        document.getElementById('player-box').innerHTML = `<iframe id="yt-iframe" src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0&fs=0&iv_load_policy=3&modestbranding=1" allow="autoplay"></iframe>`;
+        let vqParam = currentResolution ? `&vq=${currentResolution}p` : '';
+        document.getElementById('player-box').innerHTML = `<iframe id="yt-iframe" src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0&fs=0&iv_load_policy=3&modestbranding=1${vqParam}" allow="autoplay"></iframe>`;
         
         if ('mediaSession' in navigator) {
             navigator.mediaSession.metadata = new MediaMetadata({
@@ -974,10 +975,11 @@ HTML_TEMPLATE = """
         } else {
             isMiniPlaying = true;
             icon.textContent = 'pause';
+            let vqParam = currentResolution ? `&vq=${currentResolution}p` : '';
             if(iframe && iframe.dataset.src) {
                 iframe.src = iframe.dataset.src;
             } else if(activeVideoId) {
-                iframe.src = `https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&rel=0&fs=0&iv_load_policy=3&modestbranding=1`;
+                iframe.src = `https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&rel=0&fs=0&iv_load_policy=3&modestbranding=1${vqParam}`;
             }
             bgAudio.play().catch(()=>{});
             showToast('Video dilanjutkan');
