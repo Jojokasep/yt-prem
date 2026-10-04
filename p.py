@@ -76,9 +76,16 @@ HTML_TEMPLATE = """
 
         /* ===== PLAYER SECTION ===== */
         #player-section { display: none; margin-top: 0; padding-bottom: 70px; min-height: 100vh; background: #0f0f0f; z-index: 200; position: absolute; top: 0; left: 0; width: 100%; }
-        .player-container { width: 100%; aspect-ratio: 16/9; background: #000; position: sticky; top: 0; z-index: 105; }
+        .player-container { width: 100%; aspect-ratio: 16/9; background: #000; position: sticky; top: 0; z-index: 105; transition: all 0.3s ease; }
         .player-container iframe { width: 100%; height: 100%; border: none; }
         
+        /* CSS Custom Fullscreen (Tanpa pop-up youtube-nocookie) */
+        .css-fullscreen { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; max-width: none !important; aspect-ratio: auto !important; z-index: 99999 !important; border-radius: 0 !important; background: #000; display: flex; align-items: center; justify-content: center; }
+        
+        /* Tombol Perbesar & Close Fullscreen di Pojok Kanan Atas Video */
+        .floating-fs-btn { position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.5); color: #fff; border: none; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 110; }
+        .floating-fs-btn .material-icons-outlined { font-size: 20px; }
+
         .player-meta { padding: 12px 16px; }
         .player-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; line-height: 1.3; }
         .player-views-date { font-size: 13px; color: #aaa; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
@@ -172,7 +179,14 @@ HTML_TEMPLATE = """
 </main>
 
 <div id="player-section">
-    <div class="player-container" id="player-box"></div>
+    <div class="player-container" id="player-container-box">
+        <!-- Tombol Pengaturan di Pojok Kanan Atas -->
+        <button class="floating-fs-btn" style="right: 56px;" onclick="openSettings()"><span class="material-icons-outlined">settings</span></button>
+        <!-- Tombol Perbesar/Kecilkan Kustom di Pojok Kanan Atas -->
+        <button class="floating-fs-btn" id="fs-toggle-btn" onclick="toggleCustomFullscreen()"><span class="material-icons-outlined" id="fs-icon">fullscreen</span></button>
+        
+        <div id="player-box" style="width:100%; height:100%;"></div>
+    </div>
     
     <div class="player-meta fade-in">
         <div class="player-title" id="player-title">Judul Video</div>
@@ -182,8 +196,6 @@ HTML_TEMPLATE = """
         </div>
         
         <div class="action-row">
-            <!-- Tombol Pengaturan dipindah ke bawah agar rapi dan tidak tabrakan -->
-            <div class="action-pill" onclick="openSettings()"><span class="material-icons-outlined">settings</span> Pengaturan</div>
             <div class="action-pill"><span class="material-icons-outlined">share</span> Bagikan</div>
             <div class="action-pill"><span class="material-icons-outlined">download</span> Unduh</div>
             <div class="action-pill" onclick="saveTontonNanti()"><span class="material-icons-outlined">playlist_add</span> Simpan</div>
@@ -418,6 +430,22 @@ HTML_TEMPLATE = """
         alert('Kualitas video diatur ke ' + res + 'p');
     }
 
+    /* LOGIKA CUSTOM FULLSCREEN TANPA NOTIFIKASI */
+    function toggleCustomFullscreen() {
+        const box = document.getElementById('player-container-box');
+        const icon = document.getElementById('fs-icon');
+        
+        box.classList.toggle('css-fullscreen');
+        
+        if(box.classList.contains('css-fullscreen')) {
+            icon.textContent = 'fullscreen_exit';
+            document.body.style.overflow = 'hidden';
+        } else {
+            icon.textContent = 'fullscreen';
+            document.body.style.overflow = '';
+        }
+    }
+
     function playVideo(videoStr) {
         let v; try { v = JSON.parse(decodeURIComponent(videoStr)); } catch(e){ return; }
         currentPlayingVideoStr = videoStr; 
@@ -425,13 +453,19 @@ HTML_TEMPLATE = """
         document.getElementById('main').style.display = 'none';
         document.getElementById('mini-player').classList.remove('active');
         
+        // Reset fullscreen jika membuka video baru
+        document.getElementById('player-container-box').classList.remove('css-fullscreen');
+        document.getElementById('fs-icon').textContent = 'fullscreen';
+        document.body.style.overflow = '';
+
         const ps = document.getElementById('player-section');
         document.getElementById('player-title').textContent = v.title;
         document.getElementById('player-channel-name').textContent = v.channel || 'Valora Music';
         document.getElementById('player-channel-avatar').src = v.avatar || '';
         document.getElementById('player-views').textContent = (v.views || '123 rb tampilan') + ' • ' + (v.published || 'Baru saja');
         
-        document.getElementById('player-box').innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0" allow="autoplay;fullscreen"></iframe>`;
+        // Memakai parameter fs=0 agar tombol fullscreen bawaan iframe hilang
+        document.getElementById('player-box').innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0&fs=0" allow="autoplay"></iframe>`;
         
         let related = [...activeData].sort(() => 0.5 - Math.random()).slice(0, 5);
         document.getElementById('related-grid').innerHTML = '';
@@ -454,6 +488,9 @@ HTML_TEMPLATE = """
         currentPlayingVideoStr = '';
         document.getElementById('mini-player').classList.remove('active');
         document.getElementById('player-box').innerHTML = '';
+        document.getElementById('player-container-box').classList.remove('css-fullscreen');
+        document.getElementById('fs-icon').textContent = 'fullscreen';
+        document.body.style.overflow = '';
     }
 
     function showSkeletons() { 
