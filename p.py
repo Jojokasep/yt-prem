@@ -14,7 +14,7 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>YouTube Clone Pro</title>
+    <title>YouTube Premium Clone</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
@@ -87,7 +87,11 @@ HTML_TEMPLATE = """
         .header-left { display: flex; align-items: center; gap: 6px; cursor: pointer; }
         .yt-logo-box { display: flex; align-items: center; background: #ff0000; width: 30px; height: 20px; border-radius: 5px; justify-content: center; position: relative; }
         .yt-logo-box::after { content: ""; position: absolute; width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 9px solid #fff; left: 11px; }
+        
+        /* Gaya Logo YouTube Premium khas */
+        .yt-logo-container { display: flex; align-items: baseline; gap: 4px; }
         .yt-logo-text { font-size: 20px; font-weight: 700; letter-spacing: -1px; color: var(--text-color); }
+        .yt-premium-badge { font-size: 11px; font-weight: 700; color: #aaa; letter-spacing: 0.5px; background: rgba(255,255,255,0.1); padding: 1px 4px; border-radius: 3px; }
         
         .header-right { display: flex; align-items: center; gap: 8px; }
         .header-icon { background: transparent; border: none; color: var(--text-color); display: flex; align-items: center; justify-content: center; cursor: pointer; width: 40px; height: 40px; border-radius: 50%; }
@@ -155,7 +159,7 @@ HTML_TEMPLATE = """
         
         .comments-box { background: var(--card-bg); border-radius: 12px; padding: 12px 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500; color: var(--text-color); cursor: pointer; }
 
-        /* ===== MINI PLAYER KANAN BAWAH (VIDEO AKTIF & BERGERAK) ===== */
+        /* ===== MINI PLAYER KANAN BAWAH (PIEP STYLE) ===== */
         #mini-player { 
             display: none; 
             position: fixed; 
@@ -179,7 +183,6 @@ HTML_TEMPLATE = """
             position: relative;
             cursor: pointer;
         }
-        /* Iframe di mini player diatur agar aktif berjalan & responsif */
         .floating-video-slot iframe {
             width: 100%;
             height: 100%;
@@ -236,7 +239,10 @@ HTML_TEMPLATE = """
 <header id="header">
     <div class="header-left" onclick="goHome(event)">
         <div class="yt-logo-box"></div>
-        <span class="yt-logo-text">YouTube</span>
+        <div class="yt-logo-container">
+            <span class="yt-logo-text">YouTube</span>
+            <span class="yt-premium-badge">PREMIUM</span>
+        </div>
     </div>
     <div class="header-right">
         <button class="header-icon" onclick="toggleSearch(true)"><span class="material-icons-outlined">search</span></button>
@@ -342,7 +348,7 @@ HTML_TEMPLATE = """
     </div>
 </div>
 
-<!-- Floating Mini Player di Kanan Bawah (Video Aktif Bergerak) -->
+<!-- Floating Mini Player di Kanan Bawah -->
 <div id="mini-player">
     <div class="floating-video-slot" onclick="expandPlayer()">
         <div id="mini-video-slot" style="width:100%; height:100%;"></div>
@@ -828,7 +834,6 @@ HTML_TEMPLATE = """
         document.getElementById('related-grid').innerHTML = '';
         appendToGrid(related, 'related-grid');
 
-        // Parameter URL iframe mini player dioptimalkan agar video otomatis bergerak (autoplay & playsinline)
         document.getElementById('mini-video-slot').innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&controls=0&mute=0&rel=0&playsinline=1" allow="autoplay"></iframe>`;
         document.getElementById('mini-play-icon').textContent = 'pause';
 
@@ -892,6 +897,7 @@ HTML_TEMPLATE = """
         document.body.style.overflow = '';
     }
 
+    // ===== GESTURE TARIK KE BAWAH (SWIPE DOWN TO MINI-PLAYER / PIP) =====
     let startY = 0;
     let currentY = 0;
     let isDragging = false;
@@ -919,7 +925,7 @@ HTML_TEMPLATE = """
         isDragging = false;
         let diff = currentY - startY;
         playerSec.style.transition = 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)';
-        if (diff > 120) {
+        if (diff > 100) {
             minimizePlayerToMini();
         } else {
             playerSec.style.transform = 'translateY(0)';
