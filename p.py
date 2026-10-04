@@ -355,7 +355,6 @@ HTML_TEMPLATE = """
         const inputEl = document.getElementById(source === 'desktop' ? 'keyword-desktop' : 'keyword-mobile');
         const q = inputEl.value.trim();
         
-        // Mempertahankan nilai input pada form search lainnya
         document.getElementById('keyword-desktop').value = q;
         document.getElementById('keyword-mobile').value = q;
 
@@ -378,7 +377,7 @@ HTML_TEMPLATE = """
 
     function activateNav(el) {
         if(!el) return;
-        document.querySelectorAll('.nav-item, '.sidebar-item').forEach(n => n.classList.remove('active'));
+        document.querySelectorAll('.nav-item, .sidebar-item').forEach(n => n.classList.remove('active'));
         el.classList.add('active');
         
         document.getElementById('main').style.display = 'block';
@@ -442,7 +441,6 @@ HTML_TEMPLATE = """
         
         ps.style.display = 'block'; window.scrollTo(0,0);
 
-        // Ambil dan tampilkan video serupa secara otomatis
         loadRelatedVideos(v.title);
     }
 
@@ -450,7 +448,6 @@ HTML_TEMPLATE = """
         const container = document.getElementById('related-videos-container');
         container.innerHTML = '<div style="color:#aaa; font-size:13px;">Memuat video serupa...</div>';
         try {
-            // Ambil kata pertama atau pecahan judul untuk mencari yang relevan
             let keyword = title.split(' ').slice(0, 3).join(' ');
             const res = await fetch('/api/search?q=' + encodeURIComponent(keyword));
             const data = await res.json();
