@@ -15,6 +15,14 @@ HTML_TEMPLATE = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>YouTube Premium Clone</title>
+    
+    <!-- PWA Manifest & Meta -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f0f0f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="YT Premium">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
@@ -27,7 +35,7 @@ HTML_TEMPLATE = """
             --bg-color: #0f0f0f;
             --text-color: #f1f1f1;
             --sub-text: #aaa;
-            --surface-color: rgba(15,15,15,0.9);
+            --surface-color: rgba(15,15,15,0.95);
             --card-bg: #272727;
             --border-color: rgba(255,255,255,0.1);
         }
@@ -36,7 +44,7 @@ HTML_TEMPLATE = """
             --bg-color: #f9f9f9;
             --text-color: #0f0f0f;
             --sub-text: #606060;
-            --surface-color: rgba(255,255,255,0.9);
+            --surface-color: rgba(255,255,255,0.95);
             --card-bg: #e5e5e5;
             --border-color: rgba(0,0,0,0.1);
         }
@@ -56,7 +64,8 @@ HTML_TEMPLATE = """
             transition: background 0.3s, color 0.3s;
         }
         
-        ::-webkit-scrollbar { width: 0; height: 0; display: none; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.3); border-radius: 4px; }
         a { text-decoration: none; color: inherit; }
 
         @keyframes fadeIn {
@@ -110,6 +119,7 @@ HTML_TEMPLATE = """
         .suggestion-left .material-icons-outlined { color: var(--sub-text); font-size: 20px; }
         .suggestion-arrow { color: var(--sub-text); font-size: 18px; transform: rotate(45deg); padding: 4px; }
 
+        /* ===== DESAIN BERANDA DEFAULT (MOBILE) ===== */
         .chips-wrapper { position: sticky; top: 56px; background: var(--surface-color); backdrop-filter: blur(10px); z-index: 10; padding: 12px 16px; display: flex; gap: 12px; align-items: center; border-bottom: 1px solid var(--border-color); }
         .explore-icon { background: var(--card-bg); padding: 6px; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-color); }
         .chips-bar { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
@@ -136,23 +146,21 @@ HTML_TEMPLATE = """
 
         #player-section { display: none; margin-top: 0; padding-bottom: 70px; min-height: 100vh; background: var(--bg-color); z-index: 200; position: absolute; top: 0; left: 0; width: 100%; }
         
-        /* ===== PEMUTAR UTAMA & MINI PLAYER SINGLE ELEMENT ===== */
-        .player-container { width: 100%; aspect-ratio: 16/9; background: #000; position: sticky; top: 0; z-index: 105; transition: all 0.3s ease; }
+        .player-container { width: 100%; aspect-ratio: 16/9; background: #000; position: sticky; top: 56px; z-index: 105; transition: all 0.3s ease; }
         .player-container iframe { width: 100%; height: 100%; border: none; pointer-events: auto; }
         
-        /* Ketika menjadi Mini Player di kanan bawah */
         .player-container.mini-mode {
             position: fixed !important;
             bottom: 58px !important;
             right: 12px !important;
             top: auto !important;
             left: auto !important;
-            width: 170px !important;
-            height: 95px !important;
+            width: 240px !important;
+            height: 135px !important;
             aspect-ratio: auto !important;
-            border-radius: 8px !important;
+            border-radius: 10px !important;
             z-index: 99999 !important;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.8);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.8);
             border: 1px solid rgba(255,255,255,0.3);
             overflow: hidden;
         }
@@ -161,7 +169,6 @@ HTML_TEMPLATE = """
 
         .css-fullscreen { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; max-width: none !important; aspect-ratio: auto !important; z-index: 99999 !important; border-radius: 0 !important; background: #000; display: flex; align-items: center; justify-content: center; }
 
-        /* Tombol kontrol khusus mini player yang menempel di pojok pemutar */
         .floating-controls {
             position: absolute;
             top: 2px;
@@ -219,6 +226,46 @@ HTML_TEMPLATE = """
         #scroll-loader { display: none; justify-content: center; padding: 20px 0; }
         .spinner { width: 30px; height: 30px; border: 3px solid var(--card-bg); border-top-color: var(--text-color); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* ===== CSS KHUSUS DESKTOP (YOUTUBE DESKTOP LAYOUT) ===== */
+        @media (min-width: 1024px) {
+            body { padding-left: 72px; }
+            #bottom-nav { 
+                top: 56px; bottom: auto; left: 0; right: auto; width: 72px; height: calc(100vh - 56px); 
+                flex-direction: column; justify-content: flex-start; padding-top: 12px; gap: 16px; border-top: none; border-right: 1px solid var(--border-color); 
+            }
+            .nav-item { flex: unset; width: 100%; height: 72px; }
+            .nav-item .nav-label { font-size: 11px; }
+
+            #main { padding: 24px 32px 70px 32px; max-width: 1600px; margin-left: auto; margin-right: auto; }
+            .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px 16px; }
+            .vid-card { margin-bottom: 0; }
+            .thumb-wrap { border-radius: 12px; overflow: hidden; }
+            .vid-info { padding: 8px 0 0 0; }
+
+            /* Tampilan Halaman Pemutar YouTube Desktop: Video di kiri, Rekomendasi di kanan */
+            #player-section { 
+                padding: 24px 40px; display: none; position: relative; max-width: 1700px; margin-left: 72px; 
+            }
+            .player-container { 
+                width: calc(100% - 420px) !important; aspect-ratio: 16/9; position: relative !important; top: 0 !important; border-radius: 12px; overflow: hidden; float: left; 
+            }
+            .player-meta { 
+                width: calc(100% - 420px) !important; float: left; background: transparent; padding: 16px 0; 
+            }
+            #player-section #related-grid { 
+                width: 380px !important; float: right; display: flex !important; flex-direction: column !important; gap: 12px; 
+            }
+            #player-section #related-grid .vid-card { 
+                flex-direction: row !important; gap: 10px; margin-bottom: 8px; 
+            }
+            #player-section #related-grid .thumb-wrap { 
+                width: 168px !important; flex-shrink: 0; aspect-ratio: 16/9; border-radius: 8px; 
+            }
+            #player-section #related-grid .channel-avatar { display: none; }
+            #player-section #related-grid .vid-title { font-size: 14px; font-weight: 500; }
+            #player-section #related-grid .vid-meta { font-size: 12px; }
+        }
     </style>
 </head>
 <body>
@@ -274,7 +321,6 @@ HTML_TEMPLATE = """
 </main>
 
 <div id="player-section">
-    <!-- Single Pemutar Utama yang bisa berubah jadi mini player -->
     <div class="player-container" id="player-container-box" onclick="handleContainerClick(event)">
         <div id="player-box" style="width:100%; height:100%;"></div>
         <div class="floating-controls" id="floating-ctrls">
@@ -317,8 +363,9 @@ HTML_TEMPLATE = """
         </div>
         
         <div style="font-size: 16px; font-weight: 700; margin-bottom: 12px;">Video lainnya</div>
-        <div class="video-grid" id="related-grid"></div>
     </div>
+    
+    <div class="video-grid" id="related-grid"></div>
 </div>
 
 <div id="sheet-overlay" onclick="closeSettings()"></div>
@@ -366,6 +413,8 @@ HTML_TEMPLATE = """
 <script>
     let currentQuery = '';
     let currentOffset = 0;
+    let relatedOffset = 0;
+    let currentRelatedKeyword = '';
     let isLoadingMore = false;
     let currentPlayingVideoStr = ''; 
     let activeData = [];
@@ -380,6 +429,11 @@ HTML_TEMPLATE = """
         const savedTheme = localStorage.getItem('yt_theme');
         if(savedTheme) {
             document.documentElement.setAttribute('data-theme', savedTheme);
+        }
+        
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
         }
     });
 
@@ -426,9 +480,20 @@ HTML_TEMPLATE = """
 
     // ===== INFINITE SCROLL UNIVERSAL =====
     window.addEventListener('scroll', () => {
-        if (!isLoadingMore && document.getElementById('main').style.display !== 'none' && currentQuery !== 'shorts') {
+        if (isLoadingMore) return;
+        
+        const mainDisplay = document.getElementById('main').style.display;
+        const playerDisplay = document.getElementById('player-section').style.display;
+
+        if (mainDisplay !== 'none' && currentQuery !== 'shorts') {
             if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 300) {
                 loadMoreData();
+            }
+        }
+        
+        if (playerDisplay === 'block') {
+            if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 300) {
+                loadMoreRelatedData();
             }
         }
     });
@@ -465,6 +530,21 @@ HTML_TEMPLATE = """
         } catch(e){} finally { 
             isLoadingMore = false; 
             document.getElementById('scroll-loader').style.display = 'none'; 
+        }
+    }
+
+    async function loadMoreRelatedData() {
+        if (isLoadingMore || !currentRelatedKeyword) return;
+        isLoadingMore = true;
+        try {
+            const res = await fetch(`/api/search?q=${encodeURIComponent(currentRelatedKeyword)}&offset=${relatedOffset}`);
+            const data = await res.json();
+            if (data && data.length > 0) {
+                relatedOffset += data.length;
+                appendToGrid(data, 'related-grid');
+            }
+        } catch(e) {} finally {
+            isLoadingMore = false;
         }
     }
 
@@ -620,7 +700,6 @@ HTML_TEMPLATE = """
         document.getElementById('main').style.display = 'block';
         document.getElementById('player-section').style.display = 'none';
         
-        // Jika ada video aktif dan berada di mode mini player, tampilkan container mini player
         const container = document.getElementById('player-container-box');
         if(currentPlayingVideoStr && container.classList.contains('mini-mode')) {
             container.style.display = 'block';
@@ -799,7 +878,7 @@ HTML_TEMPLATE = """
         }
     }
 
-    function playVideo(videoStr) {
+    async function playVideo(videoStr) {
         let v; try { v = JSON.parse(decodeURIComponent(videoStr)); } catch(e){ return; }
         currentPlayingVideoStr = videoStr; 
         isMiniPlaying = true;
@@ -822,19 +901,27 @@ HTML_TEMPLATE = """
         document.getElementById('player-channel-avatar').src = v.avatar || '';
         document.getElementById('player-views').textContent = (v.views || '123 rb tampilan') + ' • ' + (v.published || 'Baru saja');
         
-        // Load iframe SATU-SATUNYA di player-box (tidak ada iframe ganda)
         document.getElementById('player-box').innerHTML = `<iframe id="yt-iframe" src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0&fs=0&iv_load_policy=3&modestbranding=1" allow="autoplay"></iframe>`;
         
-        let related = [...activeData].sort(() => 0.5 - Math.random()).slice(0, 5);
-        document.getElementById('related-grid').innerHTML = '';
-        appendToGrid(related, 'related-grid');
+        currentRelatedKeyword = v.title.split(' ').slice(0, 3).join(' ') || 'viral';
+        relatedOffset = 0;
+
+        try {
+            const res = await fetch(`/api/search?q=${encodeURIComponent(currentRelatedKeyword)}&offset=0`);
+            const related = await res.json();
+            relatedOffset = related.length;
+            document.getElementById('related-grid').innerHTML = '';
+            appendToGrid(related, 'related-grid');
+        } catch(e) {
+            let relatedFallback = [...activeData].sort(() => 0.5 - Math.random()).slice(0, 5);
+            document.getElementById('related-grid').innerHTML = '';
+            appendToGrid(relatedFallback, 'related-grid');
+        }
 
         document.getElementById('mini-play-icon').textContent = 'pause';
-
         window.scrollTo(0,0);
     }
 
-    // ===== KONTROL SINGLE PLAYER (TIDAK ADA REFRESH & SINKRON SEMPURNA) =====
     function toggleMiniPlay(e) {
         e.stopPropagation();
         const icon = document.getElementById('mini-play-icon');
@@ -844,7 +931,6 @@ HTML_TEMPLATE = """
             isMiniPlaying = false;
             icon.textContent = 'play_arrow';
             if(iframe) {
-                // Ubah src ke kosong untuk mematikan audio/video secara mutlak tanpa refresh halaman
                 iframe.dataset.src = iframe.src;
                 iframe.src = '';
             }
@@ -862,7 +948,6 @@ HTML_TEMPLATE = """
     }
 
     function handleContainerClick(e) {
-        // Jika sedang dalam mode mini player, klik pada container akan memperbesar kembali pemutar
         const container = document.getElementById('player-container-box');
         if(container.classList.contains('mini-mode')) {
             expandPlayer();
@@ -874,7 +959,6 @@ HTML_TEMPLATE = """
         document.getElementById('player-section').style.display = 'none';
         document.getElementById('main').style.display = 'block';
         
-        // Ubah container menjadi mini mode tanpa merusak/mereload iframe di dalamnya!
         container.classList.add('mini-mode');
         container.style.display = 'block';
         document.getElementById('player-meta-info').style.display = 'none';
@@ -887,7 +971,6 @@ HTML_TEMPLATE = """
         document.getElementById('main').style.display = 'none';
         document.getElementById('player-section').style.display = 'block';
         
-        // Kembalikan ukuran container ke posisi normal
         container.classList.remove('mini-mode');
         document.getElementById('player-meta-info').style.display = 'block';
     }
@@ -972,6 +1055,33 @@ def extract_video_data(video):
 
 @app.route("/")
 def home(): return render_template_string(HTML_TEMPLATE)
+
+@app.route("/manifest.json")
+def manifest():
+    return jsonify({
+        "name": "YouTube Premium Clone",
+        "short_name": "YT Premium",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#0f0f0f",
+        "theme_color": "#0f0f0f",
+        "icons": [
+            {
+                "src": "https://www.gstatic.com/youtube/img/branding/favicon/favicon_144x144.png",
+                "sizes": "144x144",
+                "type": "image/png"
+            }
+        ]
+    })
+
+@app.route("/sw.js")
+def service_worker():
+    sw_code = """
+    self.addEventListener('install', (e) => { self.skipWaiting(); });
+    self.addEventListener('activate', (e) => { e.waitUntil(clients.claim()); });
+    self.addEventListener('fetch', (e) => { e.respondWith(fetch(e.request).catch(() => caches.match(e.request))); });
+    """
+    return sw_code, 200, {'Content-Type': 'application/javascript'}
 
 @app.route("/api/suggestions")
 def api_suggestions():
