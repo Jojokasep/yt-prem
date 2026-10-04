@@ -438,7 +438,7 @@ HTML_TEMPLATE = """
         }
     });
 
-    // ===== INFINITE SCROLL GLOBAL (BERANDA & SEARCH) =====
+    // ===== INFINITE SCROLL UNIVERSAL (BERANDA & SEARCH) =====
     window.addEventListener('scroll', () => {
         if (!isLoadingMore && document.getElementById('main').style.display !== 'none' && currentQuery !== 'shorts') {
             if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 300) {
@@ -829,19 +829,20 @@ HTML_TEMPLATE = """
         document.getElementById('player-channel-avatar').src = v.avatar || '';
         document.getElementById('player-views').textContent = (v.views || '123 rb tampilan') + ' • ' + (v.published || 'Baru saja');
         
+        // Pastikan hanya pemutar utama yang aktif saat halaman pemutar dibuka
         document.getElementById('player-box').innerHTML = `<iframe id="yt-iframe" src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0&fs=0&iv_load_policy=3&modestbranding=1" allow="autoplay"></iframe>`;
+        document.getElementById('mini-video-slot').innerHTML = '';
         
         let related = [...activeData].sort(() => 0.5 - Math.random()).slice(0, 5);
         document.getElementById('related-grid').innerHTML = '';
         appendToGrid(related, 'related-grid');
 
-        document.getElementById('mini-video-slot').innerHTML = `<iframe id="mini-yt-iframe" src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&controls=0&mute=0&rel=0&playsinline=1" allow="autoplay"></iframe>`;
         document.getElementById('mini-play-icon').textContent = 'pause';
 
         window.scrollTo(0,0);
     }
 
-    // ===== PERBAIKAN TOTAL: TOMBOL PAUSE/PLAY MINI PLAYER SINKRON & MATI TOTAL =====
+    // ===== PERBAIKAN SINKRONISASI MINI PLAYER & UTAMA =====
     function toggleMiniPlay(e) {
         e.stopPropagation();
         const icon = document.getElementById('mini-play-icon');
@@ -851,7 +852,7 @@ HTML_TEMPLATE = """
         if (isMiniPlaying) {
             isMiniPlaying = false;
             icon.textContent = 'play_arrow';
-            // Kosongkan iframe agar audio dan video berhenti total di latar belakang
+            // Matikan total iframe mini dan utama agar tidak ada dobel audio
             miniSlot.innerHTML = '';
             mainPlayerBox.innerHTML = '';
             showToast('Video dijeda');
@@ -859,7 +860,7 @@ HTML_TEMPLATE = """
             isMiniPlaying = true;
             icon.textContent = 'pause';
             if (activeVideoId) {
-                // Muat ulang iframe pemutar mini dan utama secara bersamaan (sinkron)
+                // Hidupkan kembali secara sinkron
                 miniSlot.innerHTML = `<iframe id="mini-yt-iframe" src="https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&controls=0&mute=0&rel=0&playsinline=1" allow="autoplay"></iframe>`;
                 mainPlayerBox.innerHTML = `<iframe id="yt-iframe" src="https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&rel=0&fs=0&iv_load_policy=3&modestbranding=1" allow="autoplay"></iframe>`;
             }
@@ -871,7 +872,12 @@ HTML_TEMPLATE = """
         document.getElementById('player-section').style.display = 'none';
         document.getElementById('main').style.display = 'block';
         if(currentPlayingVideoStr) {
+            // Pindahkan iframe pemutar dari utama ke mini player dengan bersih
+            document.getElementById('player-box').innerHTML = '';
+            document.getElementById('mini-video-slot').innerHTML = `<iframe id="mini-yt-iframe" src="https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&controls=0&mute=0&rel=0&playsinline=1" allow="autoplay"></iframe>`;
             document.getElementById('mini-player').classList.add('active');
+            isMiniPlaying = true;
+            document.getElementById('mini-play-icon').textContent = 'pause';
         }
     }
 
@@ -879,6 +885,11 @@ HTML_TEMPLATE = """
         document.getElementById('main').style.display = 'none';
         document.getElementById('mini-player').classList.remove('active');
         document.getElementById('player-section').style.display = 'block';
+        // Pindahkan iframe dari mini ke pemutar utama dengan bersih
+        document.getElementById('mini-video-slot').innerHTML = '';
+        if(activeVideoId) {
+            document.getElementById('player-box').innerHTML = `<iframe id="yt-iframe" src="https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&rel=0&fs=0&iv_load_policy=3&modestbranding=1" allow="autoplay"></iframe>`;
+        }
     }
 
     function closeMiniPlayer() {
