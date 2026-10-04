@@ -119,7 +119,6 @@ HTML_TEMPLATE = """
         .suggestion-left .material-icons-outlined { color: var(--sub-text); font-size: 20px; }
         .suggestion-arrow { color: var(--sub-text); font-size: 18px; transform: rotate(45deg); padding: 4px; }
 
-        /* ===== DESAIN BERANDA DEFAULT (MOBILE) ===== */
         .chips-wrapper { position: sticky; top: 56px; background: var(--surface-color); backdrop-filter: blur(10px); z-index: 10; padding: 12px 16px; display: flex; gap: 12px; align-items: center; border-bottom: 1px solid var(--border-color); }
         .explore-icon { background: var(--card-bg); padding: 6px; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-color); }
         .chips-bar { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
@@ -146,43 +145,46 @@ HTML_TEMPLATE = """
 
         #player-section { display: none; margin-top: 0; padding-bottom: 70px; min-height: 100vh; background: var(--bg-color); z-index: 200; position: absolute; top: 0; left: 0; width: 100%; }
         
+        /* ===== PEMUTAR UTAMA & MINI PLAYER PWA STABIL ===== */
         .player-container { width: 100%; aspect-ratio: 16/9; background: #000; position: sticky; top: 56px; z-index: 105; transition: all 0.3s ease; }
         .player-container iframe { width: 100%; height: 100%; border: none; pointer-events: auto; }
         
+        /* Mini Player melayang di pojok kanan bawah (Selalu muncul saat diminimalkan) */
         .player-container.mini-mode {
             position: fixed !important;
-            bottom: 58px !important;
-            right: 12px !important;
+            bottom: 64px !important;
+            right: 16px !important;
             top: auto !important;
             left: auto !important;
-            width: 240px !important;
-            height: 135px !important;
+            width: 220px !important;
+            height: 124px !important;
             aspect-ratio: auto !important;
-            border-radius: 10px !important;
-            z-index: 99999 !important;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.8);
-            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 12px !important;
+            z-index: 999999 !important;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.9);
+            border: 2px solid rgba(255,255,255,0.4);
             overflow: hidden;
+            display: block !important;
         }
         .player-container.mini-mode iframe { pointer-events: none; }
         .player-container.mini-mode .floating-controls { display: flex !important; }
 
-        .css-fullscreen { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; max-width: none !important; aspect-ratio: auto !important; z-index: 99999 !important; border-radius: 0 !important; background: #000; display: flex; align-items: center; justify-content: center; }
+        .css-fullscreen { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; max-width: none !important; aspect-ratio: auto !important; z-index: 999999 !important; border-radius: 0 !important; background: #000; display: flex; align-items: center; justify-content: center; }
 
         .floating-controls {
             position: absolute;
-            top: 2px;
-            right: 2px;
+            top: 4px;
+            right: 4px;
             display: none;
-            gap: 2px;
-            background: rgba(0,0,0,0.7);
-            padding: 2px 4px;
-            border-radius: 10px;
+            gap: 4px;
+            background: rgba(0,0,0,0.8);
+            padding: 4px 6px;
+            border-radius: 14px;
             backdrop-filter: blur(4px);
-            z-index: 100000;
+            z-index: 1000000;
         }
         .floating-controls .material-icons {
-            font-size: 16px;
+            font-size: 18px;
             color: #fff;
             cursor: pointer;
         }
@@ -227,7 +229,7 @@ HTML_TEMPLATE = """
         .spinner { width: 30px; height: 30px; border: 3px solid var(--card-bg); border-top-color: var(--text-color); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* ===== CSS KHUSUS DESKTOP (YOUTUBE DESKTOP LAYOUT) ===== */
+        /* ===== CSS DESKTOP RESPONSIF ===== */
         @media (min-width: 1024px) {
             body { padding-left: 72px; }
             #bottom-nav { 
@@ -243,7 +245,6 @@ HTML_TEMPLATE = """
             .thumb-wrap { border-radius: 12px; overflow: hidden; }
             .vid-info { padding: 8px 0 0 0; }
 
-            /* Tampilan Halaman Pemutar YouTube Desktop: Video di kiri, Rekomendasi di kanan */
             #player-section { 
                 padding: 24px 40px; display: none; position: relative; max-width: 1700px; margin-left: 72px; 
             }
@@ -321,6 +322,7 @@ HTML_TEMPLATE = """
 </main>
 
 <div id="player-section">
+    <!-- Player Container Universal (Bisa jadi Full, bisa jadi Mini-Mode melayang di PWA) -->
     <div class="player-container" id="player-container-box" onclick="handleContainerClick(event)">
         <div id="player-box" style="width:100%; height:100%;"></div>
         <div class="floating-controls" id="floating-ctrls">
@@ -431,7 +433,6 @@ HTML_TEMPLATE = """
             document.documentElement.setAttribute('data-theme', savedTheme);
         }
         
-        // PWA Service Worker Registration
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js').catch(() => {});
         }
@@ -700,6 +701,7 @@ HTML_TEMPLATE = """
         document.getElementById('main').style.display = 'block';
         document.getElementById('player-section').style.display = 'none';
         
+        // Pastikan container mini player tetap muncul melayang di layar jika ada video aktif
         const container = document.getElementById('player-container-box');
         if(currentPlayingVideoStr && container.classList.contains('mini-mode')) {
             container.style.display = 'block';
@@ -959,11 +961,13 @@ HTML_TEMPLATE = """
         document.getElementById('player-section').style.display = 'none';
         document.getElementById('main').style.display = 'block';
         
+        // Aktifkan kelas mini-mode agar player melayang di pojok kanan bawah PWA
         container.classList.add('mini-mode');
         container.style.display = 'block';
         document.getElementById('player-meta-info').style.display = 'none';
         isMiniPlaying = true;
         document.getElementById('mini-play-icon').textContent = 'pause';
+        showToast('Mini Player diaktifkan');
     }
 
     function expandPlayer() {
@@ -1165,7 +1169,7 @@ def api_shorts():
             if is_short and d.get("id"):
                 if not any(r["id"] == d["id"] for r in results): results.append(d)
             if len(results) >= 12: break
-    except Exception: pass
+    exceptException: pass
     return jsonify(results)
 
 if __name__ == "__main__":
