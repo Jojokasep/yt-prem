@@ -92,7 +92,13 @@ HTML_TEMPLATE = """
         .header-right { display: flex; align-items: center; gap: 8px; }
         .header-icon { background: transparent; border: none; color: var(--text-color); display: flex; align-items: center; justify-content: center; cursor: pointer; width: 40px; height: 40px; border-radius: 50%; }
         
-        /* PENCARIAN & SARAN */
+        /* HEADER KETIKA HASIL PENCARIAN AKTIF (GAYA YOUTUBE) */
+        .search-active-header { display: none; align-items: center; width: 100%; height: 56px; gap: 8px; position: fixed; top: 0; left: 0; background: var(--surface-color); z-index: 105; padding: 0 12px; }
+        .search-active-header.active { display: flex; }
+        .search-bar-box { flex: 1; display: flex; align-items: center; background: var(--card-bg); border-radius: 20px; padding: 0 16px; height: 38px; justify-content: space-between; cursor: pointer; }
+        .search-bar-text { font-size: 15px; color: var(--text-color); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex: 1; }
+
+        /* PENCARIAN FULLSCREEN OVERLAY */
         .search-form-mobile { display: none; position: fixed; inset: 0; background: var(--bg-color); padding: 0 12px; flex-direction: column; z-index: 110; }
         .search-form-mobile.active { display: flex; }
         .search-top-bar { display: flex; align-items: center; height: 56px; gap: 8px; width: 100%; flex-shrink: 0; }
@@ -207,7 +213,17 @@ HTML_TEMPLATE = """
         <button class="header-icon" onclick="openSettings()"><span class="material-icons-outlined">more_vert</span></button>
     </div>
     
-    <!-- Formulir Pencarian dengan onsubmit agar tombol Enter / Go di HP berfungsi otomatis -->
+    <!-- HEADER BAR KETIKA HASIL PENCARIAN AKTIF (Menampilkan kata kunci yang dicari di atas seperti YouTube asli) -->
+    <div class="search-active-header" id="search-active-header">
+        <button type="button" class="header-icon" onclick="goHome(null)"><span class="material-icons-outlined">arrow_back</span></button>
+        <div class="search-bar-box" onclick="toggleSearch(true)">
+            <span class="search-bar-text" id="active-search-keyword">Ketik pencarian...</span>
+            <span class="material-icons-outlined" style="font-size:18px; color:var(--sub-text);" onclick="event.stopPropagation(); clearSearchQuery()">close</span>
+        </div>
+        <button type="button" class="header-icon" onclick="showToast('Fitur suara belum tersedia')"><span class="material-icons-outlined">mic</span></button>
+    </div>
+
+    <!-- FORM PENCARIAN FULLSCREEN (Saat ikon search ditekan) -->
     <form class="search-form-mobile" id="mobile-search-form" onsubmit="submitSearch(event)">
         <div class="search-top-bar">
             <button type="button" class="header-icon" onclick="toggleSearch(false)"><span class="material-icons-outlined">arrow_back</span></button>
@@ -408,6 +424,7 @@ HTML_TEMPLATE = """
         showSkeletons();
         currentQuery = '';
         currentOffset = 0;
+        document.getElementById('search-active-header').classList.remove('active');
         resetChipsToHome();
         try { 
             const res = await fetch('/api/home'); 
@@ -436,12 +453,12 @@ HTML_TEMPLATE = """
         const form = document.getElementById('mobile-search-form');
         const input = document.getElementById('keyword-mobile');
         if (show) { 
+            input.value = currentQuery; // Pertahankan teks pencarian sebelumnya jika ada
             form.classList.add('active'); 
             input.focus(); 
             history.pushState({page: 'search'}, '', '');
         } else { 
             form.classList.remove('active'); 
-            input.value = ''; 
             document.getElementById('suggestions-list').innerHTML = '';
         }
     }
@@ -488,7 +505,6 @@ HTML_TEMPLATE = """
         executeSearch(text);
     }
 
-    // Fungsi submit via Enter / Tombol Cari Keyboard HP
     function submitSearch(e) {
         if(e) e.preventDefault();
         const q = document.getElementById('keyword-mobile').value.trim();
@@ -504,7 +520,10 @@ HTML_TEMPLATE = """
         toggleSearch(false); 
         showSkeletons();
         
-        // Ubah chips bar menjadi gaya filter hasil pencarian YouTube
+        // Tampilkan header atas bergaya YouTube saat hasil pencarian aktif
+        document.getElementById('active-search-keyword').textContent = q;
+        document.getElementById('search-active-header').classList.add('active');
+
         renderSearchFilterChips();
 
         fetch('/api/search?q=' + encodeURIComponent(q))
@@ -515,6 +534,12 @@ HTML_TEMPLATE = """
                 renderGrid(d); 
             })
             .catch(() => showToast('Pencarian gagal'));
+    }
+
+    function clearSearchQuery() {
+        currentQuery = '';
+        document.getElementById('search-active-header').classList.remove('active');
+        loadHome();
     }
 
     function renderSearchFilterChips() {
@@ -585,6 +610,7 @@ HTML_TEMPLATE = """
         if (e) e.preventDefault(); 
         activateNav(el || document.querySelector('.nav-item')); 
         document.getElementById('chips-container').style.display = 'flex';
+        document.getElementById('search-active-header').classList.remove('active');
         resetChipsToHome();
         window.scrollTo(0,0);
         if(currentQuery !== '') loadHome(); 
@@ -593,6 +619,7 @@ HTML_TEMPLATE = """
     function loadShorts(el) {
         activateNav(el);
         document.getElementById('chips-container').style.display = 'none';
+        document.getElementById('search-active-header').classList.remove('active');
         showSkeletons();
         currentQuery = 'shorts'; 
         fetch('/api/shorts').then(r=>r.json()).then(d => { 
@@ -625,6 +652,7 @@ HTML_TEMPLATE = """
     function loadSubscriptions(el) {
         activateNav(el);
         document.getElementById('chips-container').style.display = 'none';
+        document.getElementById('search-active-header').classList.remove('active');
         let subs = JSON.parse(localStorage.getItem('yt_subscriptions') || '[]');
         if(subs.length === 0) {
             document.getElementById('video-grid').innerHTML = '<div style="text-align:center; padding:40px; color:var(--sub-text);">Belum ada channel yang diikuti. Klik "Berlangganan" pada video untuk menambahkan.</div>';
@@ -636,12 +664,14 @@ HTML_TEMPLATE = """
     function loadTrendingNav(el) {
         activateNav(el);
         document.getElementById('chips-container').style.display = 'none';
+        document.getElementById('search-active-header').classList.remove('active');
         loadTrending();
     }
 
     function loadProfile(el) {
         activateNav(el);
         document.getElementById('chips-container').style.display = 'none';
+        document.getElementById('search-active-header').classList.remove('active');
         let wl = JSON.parse(localStorage.getItem('yt_watch_later') || '[]');
         let html = '<div style="padding:16px;"><h2 style="margin-bottom:16px;">Tonton Nanti ('+wl.length+')</h2>';
         if(wl.length === 0) {
