@@ -81,10 +81,6 @@ HTML_TEMPLATE = """
         
         /* Custom Fullscreen tanpa pop-up nocookie */
         .css-fullscreen { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; max-width: none !important; aspect-ratio: auto !important; z-index: 99999 !important; border-radius: 0 !important; background: #000; display: flex; align-items: center; justify-content: center; }
-        
-        /* Tombol Perbesar Kustom di Pojok Kanan Atas Saja */
-        .floating-fs-btn { position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.6); color: #fff; border: none; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 110; }
-        .floating-fs-btn .material-icons-outlined { font-size: 20px; }
 
         .player-meta { padding: 12px 16px; }
         .player-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; line-height: 1.3; }
@@ -180,10 +176,8 @@ HTML_TEMPLATE = """
 </main>
 
 <div id="player-section">
+    <!-- Pemutar video bersih murni tanpa tombol melayang di atasnya -->
     <div class="player-container" id="player-container-box">
-        <!-- Tombol Perbesar Layar Saja (Tanpa tombol roda gigi melayang) -->
-        <button class="floating-fs-btn" onclick="toggleCustomFullscreen()"><span class="material-icons-outlined" id="fs-icon">fullscreen</span></button>
-        
         <div id="player-box" style="width:100%; height:100%;"></div>
     </div>
     
@@ -194,8 +188,10 @@ HTML_TEMPLATE = """
             <span><span class="material-icons" style="font-size:14px; vertical-align:middle;">thumb_up</span> 3,2 rb</span>
         </div>
         
+        <!-- Tombol Pengaturan & Perbesar berdampingan di bawah video -->
         <div class="action-row">
             <div class="action-pill" onclick="openSettings()"><span class="material-icons-outlined">settings</span> Pengaturan</div>
+            <div class="action-pill" onclick="toggleCustomFullscreen()"><span class="material-icons-outlined" id="fs-icon">fullscreen</span> Perbesar</div>
             <div class="action-pill"><span class="material-icons-outlined">share</span> Bagikan</div>
             <div class="action-pill"><span class="material-icons-outlined">download</span> Unduh</div>
             <div class="action-pill" onclick="saveTontonNanti()"><span class="material-icons-outlined">playlist_add</span> Simpan</div>
