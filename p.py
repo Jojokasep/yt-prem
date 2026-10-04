@@ -14,14 +14,14 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>YouTube Premium Clone</title>
+    <title>Valora Tube</title>
     
     <!-- PWA Manifest & Meta -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#0f0f0f">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="YT Premium">
+    <meta name="apple-mobile-web-app-title" content="Valora Tube">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -38,6 +38,7 @@ HTML_TEMPLATE = """
             --surface-color: rgba(15,15,15,0.95);
             --card-bg: #272727;
             --border-color: rgba(255,255,255,0.1);
+            --accent-color: #ff334b;
         }
         [data-theme="light"] {
             --bg-gradient: linear-gradient(-45deg, #f9f9f9, #ffffff, #f1f1f1, #ffffff);
@@ -95,12 +96,13 @@ HTML_TEMPLATE = """
 
         #header { position: fixed; top: 0; left: 0; right: 0; height: 56px; background: var(--surface-color); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 100; border-bottom: 1px solid var(--border-color); }
         .header-left { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-        .yt-logo-box { display: flex; align-items: center; background: #ff0000; width: 32px; height: 22px; border-radius: 5px; justify-content: center; position: relative; flex-shrink: 0; }
-        .yt-logo-box::after { content: ""; position: absolute; width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 9px solid #fff; left: 12px; }
         
-        .yt-logo-text-img { font-size: 20px; font-weight: 700; letter-spacing: -0.8px; color: var(--text-color); font-family: 'Roboto', sans-serif; }
+        /* Valora Logo style seperti digambar */
+        .valora-logo-circle { width: 28px; height: 28px; border-radius: 50%; background: var(--accent-color); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold; font-size: 14px; }
+        .valora-brand-text { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; color: var(--text-color); font-family: 'Roboto', sans-serif; }
+        .valora-brand-text span { color: var(--accent-color); }
         
-        .header-right { display: flex; align-items: center; gap: 8px; }
+        .header-right { display: flex; align-items: center; gap: 4px; }
         .header-icon { background: transparent; border: none; color: var(--text-color); display: flex; align-items: center; justify-content: center; cursor: pointer; width: 40px; height: 40px; border-radius: 50%; }
         
         .search-active-header { display: none; align-items: center; width: 100%; height: 56px; gap: 8px; position: fixed; top: 0; left: 0; background: var(--surface-color); z-index: 105; padding: 0 12px; }
@@ -118,7 +120,6 @@ HTML_TEMPLATE = """
         .suggestion-item:active { background: rgba(128,128,128,0.2); }
         .suggestion-left { display: flex; align-items: center; gap: 16px; flex: 1; }
         .suggestion-left .material-icons-outlined { color: var(--sub-text); font-size: 20px; }
-        .suggestion-arrow { color: var(--sub-text); font-size: 18px; transform: rotate(45deg); padding: 4px; }
 
         .chips-wrapper { position: sticky; top: 56px; background: var(--surface-color); backdrop-filter: blur(10px); z-index: 10; padding: 12px 16px; display: flex; gap: 12px; align-items: center; border-bottom: 1px solid var(--border-color); }
         .explore-icon { background: var(--card-bg); padding: 6px; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-color); }
@@ -146,47 +147,39 @@ HTML_TEMPLATE = """
 
         #player-section { display: none; margin-top: 0; padding-bottom: 70px; min-height: 100vh; background: var(--bg-color); z-index: 200; position: absolute; top: 0; left: 0; width: 100%; }
         
-        .player-container { width: 100%; aspect-ratio: 16/9; background: #000; position: sticky; top: 56px; z-index: 105; transition: all 0.3s ease; }
+        .player-container { width: 100%; aspect-ratio: 16/9; background: #000; position: sticky; top: 56px; z-index: 105; transition: all 0.3s ease; cursor: pointer; }
         .player-container iframe { width: 100%; height: 100%; border: none; pointer-events: auto; }
         
+        /* Overlay Kontrol Pemutar seperti di Screenshot 14-16 */
+        .player-overlay-ui {
+            position: absolute; inset: 0; background: rgba(0,0,0,0.4);
+            display: flex; flex-direction: column; justify-content: space-between;
+            padding: 12px; opacity: 0; transition: opacity 0.2s ease; z-index: 106; pointer-events: none;
+        }
+        .player-container:hover .player-overlay-ui, .player-overlay-ui.active { opacity: 1; pointer-events: auto; }
+        
+        .overlay-top { display: flex; justify-content: space-between; align-items: center; }
+        .overlay-top-left { display: flex; gap: 12px; align-items: center; }
+        .overlay-top-right { display: flex; gap: 16px; align-items: center; }
+        .overlay-top .material-icons { color: #fff; font-size: 24px; cursor: pointer; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+
+        .overlay-center { display: flex; justify-content: center; align-items: center; gap: 32px; }
+        .overlay-center .material-icons { color: #fff; font-size: 42px; cursor: pointer; text-shadow: 0 2px 6px rgba(0,0,0,0.8); }
+
+        .overlay-bottom { display: flex; flex-direction: column; gap: 4px; }
+        .overlay-timeline-bar { width: 100%; height: 3px; background: rgba(255,255,255,0.4); border-radius: 2px; position: relative; cursor: pointer; }
+        .overlay-timeline-progress { width: 35%; height: 100%; background: var(--accent-color); border-radius: 2px; position: relative; }
+        .overlay-timeline-progress::after { content: ""; position: absolute; right: -4px; top: -3px; width: 9px; height: 9px; background: #fff; border-radius: 50%; }
+        .overlay-time-info { display: flex; justify-content: space-between; font-size: 11px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+
         .player-container.mini-mode {
-            position: fixed !important;
-            bottom: 64px !important;
-            right: 16px !important;
-            top: auto !important;
-            left: auto !important;
-            width: 220px !important;
-            height: 124px !important;
-            aspect-ratio: auto !important;
-            border-radius: 12px !important;
-            z-index: 999999 !important;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.9);
-            border: 2px solid rgba(255,255,255,0.4);
-            overflow: hidden;
-            display: block !important;
+            position: fixed !important; bottom: 64px !important; right: 16px !important; top: auto !important; left: auto !important;
+            width: 220px !important; height: 124px !important; aspect-ratio: auto !important; border-radius: 12px !important;
+            z-index: 999999 !important; box-shadow: 0 8px 24px rgba(0,0,0,0.9); border: 2px solid rgba(255,255,255,0.4); overflow: hidden; display: block !important;
         }
         .player-container.mini-mode iframe { pointer-events: none; }
-        .player-container.mini-mode .floating-controls { display: flex !important; }
 
         .css-fullscreen { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; max-width: none !important; aspect-ratio: auto !important; z-index: 999999 !important; border-radius: 0 !important; background: #000; display: flex; align-items: center; justify-content: center; }
-
-        .floating-controls {
-            position: absolute;
-            top: 4px;
-            right: 4px;
-            display: none;
-            gap: 4px;
-            background: rgba(0,0,0,0.8);
-            padding: 4px 6px;
-            border-radius: 14px;
-            backdrop-filter: blur(4px);
-            z-index: 1000000;
-        }
-        .floating-controls .material-icons {
-            font-size: 18px;
-            color: #fff;
-            cursor: pointer;
-        }
 
         .player-meta { padding: 12px 16px; background: var(--surface-color); backdrop-filter: blur(5px); }
         .player-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; line-height: 1.3; color: var(--text-color); }
@@ -212,7 +205,7 @@ HTML_TEMPLATE = """
         .nav-item:not(.active) .material-icons { display: none; }
         .nav-item .material-icons, .nav-item .material-icons-outlined { font-size: 24px; }
         .nav-item .nav-label { font-size: 10px; margin-top: 3px; }
-        .nav-avatar { width: 24px; height: 24px; border-radius: 50%; background: #ff4e45; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; border: 2px solid transparent; color: #fff; }
+        .nav-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--accent-color); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; border: 2px solid transparent; color: #fff; }
         .nav-item.active .nav-avatar { border-color: var(--text-color); }
 
         #sheet-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; opacity: 0; transition: opacity 0.3s; }
@@ -275,8 +268,8 @@ HTML_TEMPLATE = """
 
 <header id="header">
     <div class="header-left" onclick="goHome(event)">
-        <div class="yt-logo-box"></div>
-        <span class="yt-logo-text-img">Premium</span>
+        <div class="valora-logo-circle">V</div>
+        <span class="valora-brand-text">Valora<span>Tube</span></span>
     </div>
     <div class="header-right">
         <button class="header-icon" onclick="toggleSearch(true)"><span class="material-icons-outlined">search</span></button>
@@ -297,7 +290,7 @@ HTML_TEMPLATE = """
         <div class="search-top-bar">
             <button type="button" class="header-icon" onclick="toggleSearch(false)"><span class="material-icons-outlined">arrow_back</span></button>
             <div class="search-input-wrap-mob">
-                <input type="text" id="keyword-mobile" placeholder="Telusuri YouTube" autocomplete="off" oninput="debounceFetchSuggestions(this.value)">
+                <input type="text" id="keyword-mobile" placeholder="Telusuri Valora Tube" autocomplete="off" oninput="debounceFetchSuggestions(this.value)">
             </div>
             <button type="submit" class="header-icon" style="background:var(--card-bg);"><span class="material-icons-outlined" style="font-size:20px;">search</span></button>
         </div>
@@ -322,11 +315,37 @@ HTML_TEMPLATE = """
 </main>
 
 <div id="player-section">
-    <div class="player-container" id="player-container-box" onclick="handleContainerClick(event)">
+    <div class="player-container" id="player-container-box" onclick="toggleOverlayUI(event)">
         <div id="player-box" style="width:100%; height:100%;"></div>
-        <div class="floating-controls" id="floating-ctrls">
-            <span class="material-icons" id="mini-play-icon" onclick="toggleMiniPlay(event)">pause</span>
-            <span class="material-icons" onclick="closeMiniPlayer(event)">close</span>
+        
+        <!-- Overlay UI interaktif persis seperti di gambar 14-16 -->
+        <div class="player-overlay-ui" id="player-overlay">
+            <div class="overlay-top">
+                <div class="overlay-top-left">
+                    <span class="material-icons" onclick="closePlayerToHome(event)">close</span>
+                    <span class="material-icons" onclick="showToast('Otomatis putar aktif')">autoplay</span>
+                </div>
+                <div class="overlay-top-right">
+                    <span class="material-icons" onclick="showToast('Casting perangkat diaktifkan')">cast</span>
+                    <span class="material-icons" onclick="openSettings()">settings</span>
+                </div>
+            </div>
+            
+            <div class="overlay-center">
+                <span class="material-icons" onclick="showToast('Video sebelumnya')">skip_previous</span>
+                <span class="material-icons" id="overlay-play-icon" onclick="toggleMiniPlay(event)">pause</span>
+                <span class="material-icons" onclick="showToast('Video selanjutnya')">skip_next</span>
+            </div>
+            
+            <div class="overlay-bottom">
+                <div class="overlay-timeline-bar">
+                    <div class="overlay-timeline-progress"></div>
+                </div>
+                <div class="overlay-time-info">
+                    <span id="current-time-label">00:11</span>
+                    <span id="total-time-label">23:47</span>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -338,9 +357,6 @@ HTML_TEMPLATE = """
         </div>
         
         <div class="action-row">
-            <div class="action-pill" onclick="openSettings()"><span class="material-icons-outlined">settings</span> Pengaturan</div>
-            <div class="action-pill" onclick="toggleCustomFullscreen()"><span class="material-icons-outlined" id="fs-icon">fullscreen</span> Perbesar</div>
-            <div class="action-pill" onclick="minimizePlayerToMini()"><span class="material-icons-outlined">picture_in_picture_alt</span> Mini Player</div>
             <div class="action-pill" onclick="shareVideo()"><span class="material-icons-outlined">share</span> Bagikan</div>
             <div class="action-pill" onclick="downloadVideo()"><span class="material-icons-outlined">download</span> Unduh</div>
             <div class="action-pill" onclick="saveTontonNanti()"><span class="material-icons-outlined">playlist_add</span> Simpan</div>
@@ -407,8 +423,8 @@ HTML_TEMPLATE = """
         <span class="nav-label">Trending</span>
     </div>
     <div class="nav-item" onclick="loadProfile(this)">
-        <div class="nav-avatar">Y</div>
-        <span class="nav-label">Anda</span>
+        <div class="nav-avatar">V</div>
+        <span class="nav-label">Valora</span>
     </div>
 </nav>
 
@@ -597,16 +613,10 @@ HTML_TEMPLATE = """
                         <span class="material-icons-outlined">search</span>
                         <span>${item}</span>
                     </div>
-                    <span class="material-icons suggestion-arrow" onclick="fillInput('${item}')">north_west</span>
                 `;
                 listContainer.appendChild(div);
             });
         } catch(e) {}
-    }
-
-    function fillInput(text) {
-        document.getElementById('keyword-mobile').value = text;
-        document.getElementById('keyword-mobile').focus();
     }
 
     function selectSuggestion(text) {
@@ -657,7 +667,7 @@ HTML_TEMPLATE = """
             <button class="chip" onclick="filterSearchType(this, 'video')">Video</button>
             <button class="chip" onclick="filterSearchType(this, 'channel')">Saluran</button>
             <button class="chip" onclick="filterSearchType(this, 'playlist')">Daftar Putar</button>
-            <button class="chip" onclick="filterSearchType(this, 'music')">Lagu YT Music</button>
+            <button class="chip" onclick="filterSearchType(this, 'music')">Lagu Valora Music</button>
         `;
     }
 
@@ -762,7 +772,7 @@ HTML_TEMPLATE = """
         activateNav(el);
         document.getElementById('chips-container').style.display = 'none';
         document.getElementById('search-active-header').classList.remove('active');
-        let subs = JSON.parse(localStorage.getItem('yt_subscriptions') || '[]');
+        let subs = JSON.parse(localStorage.getItem('valora_subscriptions') || '[]');
         if(subs.length === 0) {
             document.getElementById('video-grid').innerHTML = '<div style="text-align:center; padding:40px; color:var(--sub-text);">Belum ada channel yang diikuti. Klik "Berlangganan" pada video untuk menambahkan.</div>';
         } else {
@@ -781,7 +791,7 @@ HTML_TEMPLATE = """
         activateNav(el);
         document.getElementById('chips-container').style.display = 'none';
         document.getElementById('search-active-header').classList.remove('active');
-        let wl = JSON.parse(localStorage.getItem('yt_watch_later') || '[]');
+        let wl = JSON.parse(localStorage.getItem('valora_watch_later') || '[]');
         let html = '<div style="padding:16px;"><h2 style="margin-bottom:16px;">Tonton Nanti ('+wl.length+')</h2>';
         if(wl.length === 0) {
             html += '<p style="color:var(--sub-text);">Belum ada video tersimpan.</p>';
@@ -795,9 +805,9 @@ HTML_TEMPLATE = """
         if(!currentPlayingVideoStr) return;
         try {
             let v = JSON.parse(decodeURIComponent(currentPlayingVideoStr));
-            let wl = JSON.parse(localStorage.getItem('yt_watch_later') || '[]');
+            let wl = JSON.parse(localStorage.getItem('valora_watch_later') || '[]');
             if(!wl.find(x => x.id === v.id)) {
-                wl.unshift(v); localStorage.setItem('yt_watch_later', JSON.stringify(wl));
+                wl.unshift(v); localStorage.setItem('valora_watch_later', JSON.stringify(wl));
                 showToast('Disimpan ke Tonton Nanti');
             } else {
                 showToast('Video sudah ada di playlist');
@@ -808,7 +818,7 @@ HTML_TEMPLATE = """
     function toggleSubscribe() {
         isSubscribed = !isSubscribed;
         const btn = document.getElementById('subscribe-btn');
-        let subs = JSON.parse(localStorage.getItem('yt_subscriptions') || '[]');
+        let subs = JSON.parse(localStorage.getItem('valora_subscriptions') || '[]');
         if(currentPlayingVideoStr) {
             let v = JSON.parse(decodeURIComponent(currentPlayingVideoStr));
             if(isSubscribed) {
@@ -822,7 +832,7 @@ HTML_TEMPLATE = """
                 subs = subs.filter(x => x.id !== v.id);
                 showToast('Berhenti Berlangganan');
             }
-            localStorage.setItem('yt_subscriptions', JSON.stringify(subs));
+            localStorage.setItem('valora_subscriptions', JSON.stringify(subs));
         }
     }
 
@@ -882,17 +892,14 @@ HTML_TEMPLATE = """
         }
     }
 
-    function toggleCustomFullscreen() {
-        const box = document.getElementById('player-container-box');
-        const icon = document.getElementById('fs-icon');
-        box.classList.toggle('css-fullscreen');
-        if(box.classList.contains('css-fullscreen')) {
-            icon.textContent = 'fullscreen_exit';
-            document.body.style.overflow = 'hidden';
-        } else {
-            icon.textContent = 'fullscreen';
-            document.body.style.overflow = '';
-        }
+    function toggleOverlayUI(e) {
+        const overlay = document.getElementById('player-overlay');
+        overlay.classList.toggle('active');
+    }
+
+    function closePlayerToHome(e) {
+        if(e) e.stopPropagation();
+        goHome(null);
     }
 
     async function playVideo(videoStr) {
@@ -906,7 +913,6 @@ HTML_TEMPLATE = """
         const container = document.getElementById('player-container-box');
         container.classList.remove('mini-mode', 'css-fullscreen');
         container.style.display = 'block';
-        document.getElementById('fs-icon').textContent = 'fullscreen';
         document.body.style.overflow = '';
 
         const ps = document.getElementById('player-section');
@@ -914,7 +920,7 @@ HTML_TEMPLATE = """
         document.getElementById('player-meta-info').style.display = 'block';
         
         document.getElementById('player-title').textContent = v.title;
-        document.getElementById('player-channel-name').textContent = v.channel || 'YouTube Creator';
+        document.getElementById('player-channel-name').textContent = v.channel || 'Valora Creator';
         document.getElementById('player-channel-avatar').src = v.avatar || '';
         document.getElementById('player-views').textContent = (v.views || '123 rb tampilan') + ' • ' + (v.published || 'Baru saja');
         
@@ -926,7 +932,7 @@ HTML_TEMPLATE = """
         if ('mediaSession' in navigator) {
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: v.title,
-                artist: v.channel || 'YouTube Creator',
+                artist: v.channel || 'Valora Creator',
                 artwork: [{ src: `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`, sizes: '512x512', type: 'image/jpeg' }]
             });
             navigator.mediaSession.setActionHandler('play', () => { toggleMiniPlay({stopPropagation:()=>{}}); });
@@ -953,13 +959,13 @@ HTML_TEMPLATE = """
             appendToGrid(relatedFallback, 'related-grid');
         }
 
-        document.getElementById('mini-play-icon').textContent = 'pause';
+        document.getElementById('overlay-play-icon').textContent = 'pause';
         window.scrollTo(0,0);
     }
 
     function toggleMiniPlay(e) {
         e.stopPropagation();
-        const icon = document.getElementById('mini-play-icon');
+        const icon = document.getElementById('overlay-play-icon');
         const iframe = document.getElementById('yt-iframe');
         const bgAudio = document.getElementById('bg-audio');
         
@@ -986,40 +992,6 @@ HTML_TEMPLATE = """
         }
     }
 
-    function handleContainerClick(e) {
-        const container = document.getElementById('player-container-box');
-        if(container.classList.contains('mini-mode')) {
-            expandPlayer();
-        }
-    }
-
-    function minimizePlayerToMini() {
-        const container = document.getElementById('player-container-box');
-        container.classList.add('mini-mode');
-        container.style.display = 'block';
-        window.scrollTo({top: 0, behavior: 'smooth'});
-        showToast('Mini Player diaktifkan');
-    }
-
-    function expandPlayer() {
-        const container = document.getElementById('player-container-box');
-        container.classList.remove('mini-mode');
-        window.scrollTo({top: 0, behavior: 'smooth'});
-    }
-
-    function closeMiniPlayer(e) {
-        if(e) e.stopPropagation();
-        currentPlayingVideoStr = '';
-        activeVideoId = '';
-        const container = document.getElementById('player-container-box');
-        container.classList.remove('mini-mode', 'css-fullscreen');
-        container.style.display = 'none';
-        document.getElementById('player-section').style.display = 'none';
-        document.getElementById('player-box').innerHTML = '';
-        document.getElementById('bg-audio').pause();
-        document.body.style.overflow = '';
-    }
-
     function showSkeletons() { 
         document.getElementById('video-grid').innerHTML = Array(6).fill(`<div class="vid-card"><div class="thumb-wrap skeleton" style="border-radius:0;"></div><div class="vid-info"><div class="channel-avatar skeleton"></div><div class="vid-text"><div class="skeleton" style="height:14px; margin-bottom:8px; width:90%; border-radius:4px;"></div><div class="skeleton" style="height:12px; width:60%; border-radius:4px;"></div></div></div></div>`).join(''); 
     }
@@ -1036,7 +1008,7 @@ HTML_TEMPLATE = """
             card.className = 'vid-card fade-in';
             const vStr = encodeURIComponent(JSON.stringify(v));
             card.onclick = () => playVideo(vStr);
-            let initial = v.channel ? v.channel.charAt(0).toUpperCase() : 'Y';
+            let initial = v.channel ? v.channel.charAt(0).toUpperCase() : 'V';
             let avatarHtml = v.avatar ? `<div class="channel-avatar"><img src="${v.avatar}"></div>` : `<div class="channel-avatar">${initial}</div>`;
             let meta = [v.channel, v.views, v.published].filter(Boolean).join(' • ');
             
@@ -1092,8 +1064,8 @@ def home(): return render_template_string(HTML_TEMPLATE)
 @app.route("/manifest.json")
 def manifest():
     return jsonify({
-        "name": "YouTube Premium Clone",
-        "short_name": "YT Premium",
+        "name": "Valora Tube",
+        "short_name": "ValoraTube",
         "start_url": "/",
         "display": "standalone",
         "background_color": "#0f0f0f",
@@ -1142,7 +1114,7 @@ def api_suggestions():
 def api_home():
     results = []
     try:
-        base_keywords = ["Viral", "Hits Indonesia", "Populer Hari Ini", "Trending Video", "Podcast Terbaru", "Gaming"]
+        base_keywords = ["Sakura School Simulator", "Viral", "Hits Indonesia", "Populer Hari Ini", "Trending Video", "Gaming"]
         random_keyword = random.choice(base_keywords)
         videos = scrapetube.get_search(random_keyword, limit=25)
         for v in videos:
