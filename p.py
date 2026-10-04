@@ -155,52 +155,52 @@ HTML_TEMPLATE = """
         
         .comments-box { background: var(--card-bg); border-radius: 12px; padding: 12px 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500; color: var(--text-color); cursor: pointer; }
 
-        /* ===== FLOATING MINI PLAYER DI KANAN BAWAH (PICTURE-IN-PICTURE STYLE) ===== */
+        /* ===== MINI PLAYER KANAN BAWAH (VIDEO AKTIF & BERGERAK) ===== */
         #mini-player { 
             display: none; 
             position: fixed; 
-            bottom: 64px; 
-            right: 16px; 
-            width: 180px; 
-            height: 105px; 
+            bottom: 58px; 
+            right: 12px; 
+            width: 170px; 
+            height: 95px; 
             background: #000; 
-            border-radius: 12px; 
-            z-index: 999; 
+            border-radius: 8px; 
+            z-index: 99; 
             overflow: hidden; 
-            box-shadow: 0 8px 24px rgba(0,0,0,0.6); 
-            border: 1px solid rgba(255,255,255,0.2); 
+            box-shadow: 0 4px 16px rgba(0,0,0,0.8); 
+            border: 1px solid rgba(255,255,255,0.3); 
             animation: fadeIn 0.3s ease;
         }
         #mini-player.active { display: block; }
         
-        /* Slot Iframe Video Berjalan di Kotak Kecil */
         .floating-video-slot {
             width: 100%;
             height: 100%;
             position: relative;
             cursor: pointer;
         }
+        /* Iframe di mini player diatur agar aktif berjalan & responsif */
         .floating-video-slot iframe {
             width: 100%;
             height: 100%;
             border: none;
-            pointer-events: none; /* Klik diteruskan ke container pembungkus */
+            pointer-events: none;
         }
 
-        /* Tombol Kontrol Melayang di atas Kotak Mini Player (Close & Play/Pause) */
         .floating-controls {
             position: absolute;
-            top: 4px;
-            right: 4px;
+            top: 2px;
+            right: 2px;
             display: flex;
-            gap: 4px;
-            background: rgba(0,0,0,0.6);
-            padding: 2px 6px;
-            border-radius: 12px;
+            gap: 2px;
+            background: rgba(0,0,0,0.7);
+            padding: 2px 4px;
+            border-radius: 10px;
             backdrop-filter: blur(4px);
+            z-index: 5;
         }
         .floating-controls .material-icons {
-            font-size: 18px;
+            font-size: 16px;
             color: #fff;
             cursor: pointer;
         }
@@ -342,7 +342,7 @@ HTML_TEMPLATE = """
     </div>
 </div>
 
-<!-- Floating Mini Player di Kanan Bawah (Aktif Terputar) -->
+<!-- Floating Mini Player di Kanan Bawah (Video Aktif Bergerak) -->
 <div id="mini-player">
     <div class="floating-video-slot" onclick="expandPlayer()">
         <div id="mini-video-slot" style="width:100%; height:100%;"></div>
@@ -828,8 +828,8 @@ HTML_TEMPLATE = """
         document.getElementById('related-grid').innerHTML = '';
         appendToGrid(related, 'related-grid');
 
-        // Render video aktif di floating mini player
-        document.getElementById('mini-video-slot').innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&controls=0&mute=0&rel=0"></iframe>`;
+        // Parameter URL iframe mini player dioptimalkan agar video otomatis bergerak (autoplay & playsinline)
+        document.getElementById('mini-video-slot').innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&controls=0&mute=0&rel=0&playsinline=1" allow="autoplay"></iframe>`;
         document.getElementById('mini-play-icon').textContent = 'pause';
 
         ps.style.display = 'block'; window.scrollTo(0,0);
@@ -852,7 +852,7 @@ HTML_TEMPLATE = """
             icon.textContent = 'pause';
             if (activeVideoId) {
                 playerBox.innerHTML = `<iframe id="yt-iframe" src="https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&rel=0&fs=0&iv_load_policy=3&modestbranding=1" allow="autoplay"></iframe>`;
-                miniSlot.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&controls=0&mute=0&rel=0"></iframe>`;
+                miniSlot.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&controls=0&mute=0&rel=0&playsinline=1" allow="autoplay"></iframe>`;
             }
             showToast('Video dilanjutkan');
         }
