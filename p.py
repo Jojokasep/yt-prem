@@ -346,10 +346,10 @@ HTML_TEMPLATE = """
 <!-- Floating Mini Player di Kanan Bawah -->
 <div id="mini-player">
     <div class="floating-video-slot" onclick="expandPlayer()">
-        <div id="mini-video-slot" style="width:100%; height:100%;"></div>
+        <iframe id="mini-yt-iframe" src="" allow="autoplay"></iframe>
     </div>
     <div class="floating-controls">
-        <span class="material-icons" id="mini-play-icon" onclick="toggleMiniPlay(event)">play_arrow</span>
+        <span class="material-icons" id="mini-play-icon" onclick="toggleMiniPlay(event)">pause</span>
         <span class="material-icons" onclick="closeMiniPlayer()">close</span>
     </div>
 </div>
@@ -438,7 +438,7 @@ HTML_TEMPLATE = """
         }
     });
 
-    // ===== INFINITE SCROLL UNIVERSAL (BERANDA & SEARCH) =====
+    // ===== INFINITE SCROLL UNIVERSAL =====
     window.addEventListener('scroll', () => {
         if (!isLoadingMore && document.getElementById('main').style.display !== 'none' && currentQuery !== 'shorts') {
             if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 300) {
@@ -829,9 +829,10 @@ HTML_TEMPLATE = """
         document.getElementById('player-channel-avatar').src = v.avatar || '';
         document.getElementById('player-views').textContent = (v.views || '123 rb tampilan') + ' • ' + (v.published || 'Baru saja');
         
-        // Pastikan hanya pemutar utama yang aktif saat halaman pemutar dibuka
+        // Atur iframe utama
         document.getElementById('player-box').innerHTML = `<iframe id="yt-iframe" src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0&fs=0&iv_load_policy=3&modestbranding=1" allow="autoplay"></iframe>`;
-        document.getElementById('mini-video-slot').innerHTML = '';
+        // Kosongkan mini player agar tidak aktif bersamaan
+        document.getElementById('mini-yt-iframe').src = '';
         
         let related = [...activeData].sort(() => 0.5 - Math.random()).slice(0, 5);
         document.getElementById('related-grid').innerHTML = '';
@@ -842,27 +843,27 @@ HTML_TEMPLATE = """
         window.scrollTo(0,0);
     }
 
-    // ===== PERBAIKAN SINKRONISASI MINI PLAYER & UTAMA =====
+    // ===== PERBAIKAN STABIL: KONTROL PAUSE/PLAY TANPA REFRESH/BERKEDIP =====
     function toggleMiniPlay(e) {
         e.stopPropagation();
         const icon = document.getElementById('mini-play-icon');
-        const miniSlot = document.getElementById('mini-video-slot');
-        const mainPlayerBox = document.getElementById('player-box');
+        const miniIframe = document.getElementById('mini-yt-iframe');
+        const mainIframe = document.getElementById('yt-iframe');
         
         if (isMiniPlaying) {
             isMiniPlaying = false;
             icon.textContent = 'play_arrow';
-            // Matikan total iframe mini dan utama agar tidak ada dobel audio
-            miniSlot.innerHTML = '';
-            mainPlayerBox.innerHTML = '';
+            // Ubah src ke kosong untuk mematikan audio/video tanpa menghancurkan elemen
+            if(miniIframe) miniIframe.src = '';
+            if(mainIframe) mainIframe.src = '';
             showToast('Video dijeda');
         } else {
             isMiniPlaying = true;
             icon.textContent = 'pause';
             if (activeVideoId) {
-                // Hidupkan kembali secara sinkron
-                miniSlot.innerHTML = `<iframe id="mini-yt-iframe" src="https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&controls=0&mute=0&rel=0&playsinline=1" allow="autoplay"></iframe>`;
-                mainPlayerBox.innerHTML = `<iframe id="yt-iframe" src="https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&rel=0&fs=0&iv_load_policy=3&modestbranding=1" allow="autoplay"></iframe>`;
+                // Set kembali src dengan parameter autoplay
+                if(miniIframe) miniIframe.src = `https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&controls=0&mute=0&rel=0&playsinline=1`;
+                if(mainIframe) mainIframe.src = `https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&rel=0&fs=0&iv_load_policy=3&modestbranding=1`;
             }
             showToast('Video dilanjutkan');
         }
@@ -872,9 +873,9 @@ HTML_TEMPLATE = """
         document.getElementById('player-section').style.display = 'none';
         document.getElementById('main').style.display = 'block';
         if(currentPlayingVideoStr) {
-            // Pindahkan iframe pemutar dari utama ke mini player dengan bersih
-            document.getElementById('player-box').innerHTML = '';
-            document.getElementById('mini-video-slot').innerHTML = `<iframe id="mini-yt-iframe" src="https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&controls=0&mute=0&rel=0&playsinline=1" allow="autoplay"></iframe>`;
+            // Pindahkan sumber video ke mini player tanpa reset total struktur DOM
+            document.getElementById('yt-iframe').src = '';
+            document.getElementById('mini-yt-iframe').src = `https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&controls=0&mute=0&rel=0&playsinline=1`;
             document.getElementById('mini-player').classList.add('active');
             isMiniPlaying = true;
             document.getElementById('mini-play-icon').textContent = 'pause';
@@ -885,8 +886,8 @@ HTML_TEMPLATE = """
         document.getElementById('main').style.display = 'none';
         document.getElementById('mini-player').classList.remove('active');
         document.getElementById('player-section').style.display = 'block';
-        // Pindahkan iframe dari mini ke pemutar utama dengan bersih
-        document.getElementById('mini-video-slot').innerHTML = '';
+        // Pindahkan sumber video kembali ke pemutar utama dengan mulus
+        document.getElementById('mini-yt-iframe').src = '';
         if(activeVideoId) {
             document.getElementById('player-box').innerHTML = `<iframe id="yt-iframe" src="https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&rel=0&fs=0&iv_load_policy=3&modestbranding=1" allow="autoplay"></iframe>`;
         }
@@ -897,7 +898,7 @@ HTML_TEMPLATE = """
         activeVideoId = '';
         document.getElementById('mini-player').classList.remove('active');
         document.getElementById('player-box').innerHTML = '';
-        document.getElementById('mini-video-slot').innerHTML = '';
+        document.getElementById('mini-yt-iframe').src = '';
         document.getElementById('player-container-box').classList.remove('css-fullscreen');
         document.getElementById('fs-icon').textContent = 'fullscreen';
         document.body.style.overflow = '';
