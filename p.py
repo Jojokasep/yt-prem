@@ -75,9 +75,9 @@ HTML_TEMPLATE = """
         .vid-meta { font-size: 13px; color: #aaa; }
 
         /* ===== PLAYER SECTION ===== */
-        #player-section { display: none; margin-top: 0; padding-bottom: 70px; min-height: 100vh; background: #0f0f0f; z-index: 200; position: absolute; top: 0; left: 0; width: 100%; }
-        .player-container { width: 100%; aspect-ratio: 16/9; background: #000; position: sticky; top: 0; z-index: 105; transition: all 0.3s ease; }
-        .player-container iframe { width: 100%; height: 100%; border: none; }
+        #player-section { display: none; margin-top: 0; padding-bottom: 70px; min-height: 100vh; background: #0f0f0f; z-index: 200; position: absolute; top: 0; left: 0; width: 100%; transition: transform 0.25s ease; }
+        .player-container { width: 100%; aspect-ratio: 16/9; background: #000; position: sticky; top: 0; z-index: 105; transition: transform 0.25s ease; touch-action: none; }
+        .player-container iframe { width: 100%; height: 100%; border: none; pointer-events: auto; }
         
         /* Custom Fullscreen tanpa pop-up nocookie */
         .css-fullscreen { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; max-width: none !important; aspect-ratio: auto !important; z-index: 99999 !important; border-radius: 0 !important; background: #000; display: flex; align-items: center; justify-content: center; }
@@ -176,7 +176,7 @@ HTML_TEMPLATE = """
 </main>
 
 <div id="player-section">
-    <!-- Pemutar video bersih murni tanpa tombol melayang di atasnya -->
+    <!-- Kontainer Video dengan Fitur Geser ke Bawah (Swipe-Down) -->
     <div class="player-container" id="player-container-box">
         <div id="player-box" style="width:100%; height:100%;"></div>
     </div>
@@ -188,7 +188,6 @@ HTML_TEMPLATE = """
             <span><span class="material-icons" style="font-size:14px; vertical-align:middle;">thumb_up</span> 3,2 rb</span>
         </div>
         
-        <!-- Tombol Pengaturan & Perbesar berdampingan di bawah video -->
         <div class="action-row">
             <div class="action-pill" onclick="openSettings()"><span class="material-icons-outlined">settings</span> Pengaturan</div>
             <div class="action-pill" onclick="toggleCustomFullscreen()"><span class="material-icons-outlined" id="fs-icon">fullscreen</span> Perbesar</div>
@@ -219,7 +218,7 @@ HTML_TEMPLATE = """
     </div>
 </div>
 
-<!-- Bottom Sheet Pengaturan (Settings Menu) -->
+<!-- Bottom Sheet Pengaturan -->
 <div id="sheet-overlay" onclick="closeSettings()"></div>
 <div id="settings-sheet">
     <div class="sheet-handle"></div>
@@ -287,8 +286,26 @@ HTML_TEMPLATE = """
     let currentPlayingVideoStr = ''; 
     let activeData = [];
     
-    window.addEventListener('DOMContentLoaded', () => { loadHome(); });
+    window.addEventListener('DOMContentLoaded', () => { 
+        loadHome(); 
+        history.pushState({page: 'home'}, '', '');
+    });
     
+    window.addEventListener('popstate', (e) => {
+        const sheet = document.getElementById('settings-sheet');
+        const playerSec = document.getElementById('player-section');
+        
+        if (sheet.classList.contains('show')) {
+            closeSettings();
+            history.pushState({page: 'home'}, '', '');
+        } else if (playerSec.style.display === 'block') {
+            minimizePlayerToMini();
+            history.pushState({page: 'home'}, '', '');
+        } else {
+            history.pushState({page: 'home'}, '', '');
+        }
+    });
+
     window.addEventListener('scroll', () => {
         if (!isLoadingMore && document.getElementById('main').style.display !== 'none') {
             if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 300) {
@@ -426,7 +443,7 @@ HTML_TEMPLATE = """
         alert('Kualitas video diatur ke ' + res + 'p');
     }
 
-    /* CUSTOM FULLSCREEN TANPA NOTIFIKASI */
+    /* CUSTOM FULLSCREEN */
     function toggleCustomFullscreen() {
         const box = document.getElementById('player-container-box');
         const icon = document.getElementById('fs-icon');
@@ -454,6 +471,7 @@ HTML_TEMPLATE = """
         document.body.style.overflow = '';
 
         const ps = document.getElementById('player-section');
+        ps.style.transform = 'translateY(0)';
         document.getElementById('player-title').textContent = v.title;
         document.getElementById('player-channel-name').textContent = v.channel || 'Valora Music';
         document.getElementById('player-channel-avatar').src = v.avatar || '';
@@ -472,10 +490,25 @@ HTML_TEMPLATE = """
         ps.style.display = 'block'; window.scrollTo(0,0);
     }
 
+    function minimizePlayerToMini() {
+        const ps = document.getElementById('player-section');
+        ps.style.transform = 'translateY(100%)';
+        setTimeout(() => {
+            ps.style.display = 'none';
+            ps.style.transform = 'translateY(0)';
+            document.getElementById('main').style.display = 'block';
+            if(currentPlayingVideoStr) {
+                document.getElementById('mini-player').classList.add('active');
+            }
+        }, 250);
+    }
+
     function expandPlayer() {
         document.getElementById('main').style.display = 'none';
         document.getElementById('mini-player').classList.remove('active');
-        document.getElementById('player-section').style.display = 'block';
+        const ps = document.getElementById('player-section');
+        ps.style.display = 'block';
+        ps.style.transform = 'translateY(0)';
     }
 
     function closeMiniPlayer() {
@@ -486,6 +519,41 @@ HTML_TEMPLATE = """
         document.getElementById('fs-icon').textContent = 'fullscreen';
         document.body.style.overflow = '';
     }
+
+    /* FITUR SWIPE-DOWN (GESER VIDEO KE BAWAH) */
+    let startY = 0;
+    let currentY = 0;
+    let isDragging = false;
+    const playerContainer = document.getElementById('player-container-box');
+    const playerSec = document.getElementById('player-section');
+
+    playerContainer.addEventListener('touchstart', (e) => {
+        if (playerContainer.classList.contains('css-fullscreen')) return;
+        startY = e.touches[0].clientY;
+        isDragging = true;
+    });
+
+    playerContainer.addEventListener('touchmove', (e) => {
+        if (!isDragging || playerContainer.classList.contains('css-fullscreen')) return;
+        currentY = e.touches[0].clientY;
+        let diff = currentY - startY;
+        if (diff > 0) {
+            playerSec.style.transform = `translateY(${diff}px)`;
+        }
+    });
+
+    playerContainer.addEventListener('touchend', (e) => {
+        if (!isDragging || playerContainer.classList.contains('css-fullscreen')) return;
+        isDragging = false;
+        let diff = currentY - startY;
+        if (diff > 120) {
+            minimizePlayerToMini();
+        } else {
+            playerSec.style.transform = 'translateY(0)';
+        }
+        startY = 0;
+        currentY = 0;
+    });
 
     function showSkeletons() { 
         document.getElementById('video-grid').innerHTML = Array(6).fill(`<div class="vid-card"><div class="thumb-wrap skeleton" style="border-radius:0;"></div><div class="vid-info"><div class="channel-avatar skeleton"></div><div class="vid-text"><div class="skeleton" style="height:14px; margin-bottom:8px; width:90%; border-radius:4px;"></div><div class="skeleton" style="height:12px; width:60%; border-radius:4px;"></div></div></div></div>`).join(''); 
