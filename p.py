@@ -89,11 +89,14 @@ HTML_TEMPLATE = """
         .vid-meta { font-size: 14px; color: #aaa; }
 
         /* ===== PLAYER SECTION ===== */
-        #player-section { display: none; margin-left: 240px; margin-top: 56px; padding: 24px; max-width: 1280px; }
+        #player-section { display: none; margin-left: 240px; margin-top: 56px; padding: 24px; max-width: 1500px; }
+        .player-layout { display: grid; grid-template-columns: 1fr 400px; gap: 24px; }
+        
+        .player-main-col { width: 100%; }
         .player-container { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden; }
         .player-container iframe { width: 100%; height: 100%; border: none; }
         
-        .player-meta { padding: 20px 0; }
+        .player-meta { padding: 16px 0; }
         .player-title { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
         
         .channel-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; }
@@ -106,6 +109,16 @@ HTML_TEMPLATE = """
         .action-pill:hover { background: #3f3f3f; }
         
         .comments-box { background: #272727; border-radius: 12px; padding: 16px; margin-top: 16px; }
+
+        /* Related Videos Column */
+        .related-col { display: flex; flex-direction: column; gap: 12px; }
+        .related-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+        .related-card { display: flex; gap: 8px; cursor: pointer; }
+        .related-thumb { width: 168px; aspect-ratio: 16/9; background: #272727; border-radius: 8px; overflow: hidden; flex-shrink: 0; position: relative; }
+        .related-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .related-info { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+        .related-vid-title { font-size: 14px; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3; }
+        .related-vid-channel, .related-vid-meta { font-size: 12px; color: #aaa; }
 
         /* ===== PROFILE / ANDA TAB ===== */
         #profile-section { display: none; margin-left: 240px; margin-top: 56px; padding: 24px; min-height: 100vh; }
@@ -129,6 +142,10 @@ HTML_TEMPLATE = """
         /* =========================================
            MEDIA QUERIES (MODE HP / MOBILE)
            ========================================= */
+        @media (max-width: 900px) {
+            .player-layout { grid-template-columns: 1fr; }
+        }
+
         @media (max-width: 792px) {
             #sidebar { display: none; }
             #bottom-nav { display: flex; }
@@ -146,10 +163,11 @@ HTML_TEMPLATE = """
             .vid-title { font-size: 15px; }
             .vid-meta { font-size: 13px; }
             
-            #player-section { margin-left: 0; padding: 0; padding-bottom: 60px; }
+            #player-section { margin-left: 0; padding: 0; padding-bottom: 60px; max-width: 100%; }
             .player-container { border-radius: 0; position: sticky; top: 0; z-index: 105; }
             .player-meta { padding: 12px 16px; }
             .player-title { font-size: 18px; }
+            .related-col { padding: 0 16px; }
 
             #profile-section { margin-left: 0; padding: 0; padding-bottom: 60px; }
             .profile-header { padding: 24px 16px; margin-bottom: 0; }
@@ -216,34 +234,43 @@ HTML_TEMPLATE = """
 </main>
 
 <div id="player-section">
-    <div class="player-container" id="player-box"></div>
-    <div class="player-meta">
-        <div class="player-title" id="player-title">Judul Video</div>
-        
-        <div class="channel-row">
-            <div class="channel-info">
-                <img id="player-channel-avatar" src="" style="width:40px; height:40px; border-radius:50%; object-fit:cover; background:#444;">
-                <div>
-                    <div class="channel-name" id="player-channel-name">Nama Channel</div>
-                    <div style="font-size: 12px; color: #aaa;">1,2 jt subscriber</div>
+    <div class="player-layout">
+        <div class="player-main-col">
+            <div class="player-container" id="player-box"></div>
+            <div class="player-meta">
+                <div class="player-title" id="player-title">Judul Video</div>
+                
+                <div class="channel-row">
+                    <div class="channel-info">
+                        <img id="player-channel-avatar" src="" style="width:40px; height:40px; border-radius:50%; object-fit:cover; background:#444;">
+                        <div>
+                            <div class="channel-name" id="player-channel-name">Nama Channel</div>
+                            <div style="font-size: 12px; color: #aaa;">1,2 jt subscriber</div>
+                        </div>
+                    </div>
+                    <button class="btn-subscribe">Subscribe</button>
+                </div>
+                
+                <div class="action-row">
+                    <div class="action-pill"><span class="material-icons-outlined">thumb_up</span> Suka</div>
+                    <div class="action-pill"><span class="material-icons-outlined">thumb_down</span></div>
+                    <div class="action-pill"><span class="material-icons-outlined">reply</span> Bagikan</div>
+                    <div class="action-pill"><span class="material-icons-outlined">download</span> Download</div>
+                </div>
+                
+                <div class="comments-box">
+                    <div style="font-weight:700; margin-bottom:8px; font-size:14px;">Komentar <span style="font-weight:400; color:#aaa;">245</span></div>
+                    <div style="display:flex; gap:10px; font-size:13px;">
+                        <div style="width:24px; height:24px; border-radius:50%; background:#555;"></div>
+                        <div style="flex:1;">Tulis komentar...</div>
+                    </div>
                 </div>
             </div>
-            <button class="btn-subscribe">Subscribe</button>
         </div>
         
-        <div class="action-row">
-            <div class="action-pill"><span class="material-icons-outlined">thumb_up</span> Suka</div>
-            <div class="action-pill"><span class="material-icons-outlined">thumb_down</span></div>
-            <div class="action-pill"><span class="material-icons-outlined">reply</span> Bagikan</div>
-            <div class="action-pill"><span class="material-icons-outlined">download</span> Download</div>
-        </div>
-        
-        <div class="comments-box">
-            <div style="font-weight:700; margin-bottom:8px; font-size:14px;">Komentar <span style="font-weight:400; color:#aaa;">245</span></div>
-            <div style="display:flex; gap:10px; font-size:13px;">
-                <div style="width:24px; height:24px; border-radius:50%; background:#555;"></div>
-                <div style="flex:1;">Tulis komentar...</div>
-            </div>
+        <div class="related-col">
+            <div class="related-title">Video Serupa</div>
+            <div id="related-videos-container" style="display: flex; flex-direction: column; gap: 10px;"></div>
         </div>
     </div>
 </div>
@@ -287,7 +314,6 @@ HTML_TEMPLATE = """
     window.addEventListener('DOMContentLoaded', () => { loadHome(); });
     
     window.addEventListener('scroll', () => {
-        // Cek jika sedang ada di Beranda/Search
         if (!isLoadingMore && document.getElementById('main').style.display !== 'none') {
             if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 300) {
                 loadMoreData();
@@ -299,6 +325,8 @@ HTML_TEMPLATE = """
         showSkeletons();
         currentQuery = '';
         currentOffset = 0;
+        document.getElementById('keyword-desktop').value = '';
+        document.getElementById('keyword-mobile').value = '';
         try { const res = await fetch('/api/home'); const data = await res.json(); renderGrid(data); } catch(e){}
     }
 
@@ -319,14 +347,20 @@ HTML_TEMPLATE = """
         const form = document.getElementById('mobile-search-form');
         const input = document.getElementById('keyword-mobile');
         if (show) { form.classList.add('active'); input.focus(); } 
-        else { form.classList.remove('active'); input.value = ''; }
+        else { form.classList.remove('active'); }
     }
 
     function searchVideos(e, source) {
         e.preventDefault(); 
-        const q = document.getElementById(source === 'desktop' ? 'keyword-desktop' : 'keyword-mobile').value.trim();
+        const inputEl = document.getElementById(source === 'desktop' ? 'keyword-desktop' : 'keyword-mobile');
+        const q = inputEl.value.trim();
+        
+        // Mempertahankan nilai input pada form search lainnya
+        document.getElementById('keyword-desktop').value = q;
+        document.getElementById('keyword-mobile').value = q;
+
         if (q) { 
-            activateNav(document.querySelector('.nav-item')); // Switch tab to home icon
+            activateNav(document.querySelector('.nav-item')); 
             currentQuery = q; currentOffset = 0; 
             if(source === 'mobile') toggleMobileSearch(false); 
             showSkeletons();
@@ -336,26 +370,26 @@ HTML_TEMPLATE = """
 
     function chipClick(btn, query) {
         document.querySelectorAll('.chip').forEach(c => c.classList.remove('active')); btn.classList.add('active');
+        document.getElementById('keyword-desktop').value = query;
+        document.getElementById('keyword-mobile').value = query;
         if (query) { currentQuery = query; currentOffset = 0; showSkeletons(); fetch('/api/search?q=' + encodeURIComponent(query)).then(r=>r.json()).then(d => { currentOffset=d.length; renderGrid(d); }); } 
         else loadHome();
     }
 
-    // Logic untuk mengatur tampilan saat tab diklik
     function activateNav(el) {
         if(!el) return;
-        document.querySelectorAll('.nav-item, .sidebar-item').forEach(n => n.classList.remove('active'));
+        document.querySelectorAll('.nav-item, '.sidebar-item').forEach(n => n.classList.remove('active'));
         el.classList.add('active');
         
-        // Tampilkan main content, sembunyikan player dan profil
         document.getElementById('main').style.display = 'block';
         document.getElementById('player-section').style.display = 'none';
         document.getElementById('profile-section').style.display = 'none';
-        document.getElementById('player-box').innerHTML = ''; // Hentikan video berjalan
+        document.getElementById('player-box').innerHTML = ''; 
     }
 
     function goHome(e, el) { 
         if (e) e.preventDefault(); 
-        activateNav(el || document.querySelector('.nav-item')); // Aktifkan ikon beranda
+        activateNav(el || document.querySelector('.nav-item')); 
         document.getElementById('chips-container').style.display = 'block';
         loadHome(); 
     }
@@ -370,7 +404,6 @@ HTML_TEMPLATE = """
 
     function showProfile(el) {
         activateNav(el);
-        // Sembunyikan main (beranda), tampilkan profil
         document.getElementById('main').style.display = 'none';
         document.getElementById('profile-section').style.display = 'block';
         
@@ -394,12 +427,10 @@ HTML_TEMPLATE = """
     function playVideo(videoStr) {
         let v; try { v = JSON.parse(decodeURIComponent(videoStr)); } catch(e){ return; }
         
-        // Save to History
         let hist = JSON.parse(localStorage.getItem('yt_history') || '[]');
         hist = hist.filter(x => x.id !== v.id); hist.unshift(v);
         if(hist.length > 50) hist.pop(); localStorage.setItem('yt_history', JSON.stringify(hist));
 
-        // Hide other pages, show Player
         document.getElementById('main').style.display = 'none';
         document.getElementById('profile-section').style.display = 'none';
         const ps = document.getElementById('player-section');
@@ -410,6 +441,45 @@ HTML_TEMPLATE = """
         document.getElementById('player-box').innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0" allow="autoplay;fullscreen"></iframe>`;
         
         ps.style.display = 'block'; window.scrollTo(0,0);
+
+        // Ambil dan tampilkan video serupa secara otomatis
+        loadRelatedVideos(v.title);
+    }
+
+    async function loadRelatedVideos(title) {
+        const container = document.getElementById('related-videos-container');
+        container.innerHTML = '<div style="color:#aaa; font-size:13px;">Memuat video serupa...</div>';
+        try {
+            // Ambil kata pertama atau pecahan judul untuk mencari yang relevan
+            let keyword = title.split(' ').slice(0, 3).join(' ');
+            const res = await fetch('/api/search?q=' + encodeURIComponent(keyword));
+            const data = await res.json();
+            
+            if(data.length === 0) {
+                container.innerHTML = '<div style="color:#aaa; font-size:13px;">Tidak ada video serupa.</div>';
+                return;
+            }
+
+            container.innerHTML = data.slice(0, 10).map(item => {
+                const itemStr = encodeURIComponent(JSON.stringify(item));
+                let meta = [item.channel, item.views].filter(Boolean).join(' • ');
+                return `
+                    <div class="related-card" onclick="playVideo('${itemStr}')">
+                        <div class="related-thumb">
+                            <img src="https://i.ytimg.com/vi/${item.id}/mqdefault.jpg" loading="lazy">
+                            ${item.duration ? '<span class="duration-badge" style="font-size:10px; padding:2px 4px;">' + item.duration + '</span>' : ''}
+                        </div>
+                        <div class="related-info">
+                            <div class="related-vid-title">${item.title}</div>
+                            <div class="related-vid-channel">${item.channel || ''}</div>
+                            <div class="related-vid-meta">${meta}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } catch(e) {
+            container.innerHTML = '';
+        }
     }
 
     function showSkeletons() { document.getElementById('video-grid').innerHTML = Array(8).fill(`<div class="vid-card"><div class="thumb-wrap"></div><div class="vid-info"><div class="channel-avatar"></div><div class="vid-text"><div style="height:14px; background:#272727; margin-bottom:8px; width:90%; border-radius:4px;"></div><div style="height:12px; background:#272727; width:60%; border-radius:4px;"></div></div></div></div>`).join(''); }
@@ -485,7 +555,6 @@ def home(): return render_template_string(HTML_TEMPLATE)
 
 @app.route("/api/home")
 def api_home():
-    """ Generates a random viral/hits feed like real YouTube Home """
     results = []
     try:
         base_keywords = ["Viral 2024", "Hits Indonesia", "Populer Hari Ini", "Trending Video", "Podcast Indonesia terbaru", "Gaming Indonesia"]
