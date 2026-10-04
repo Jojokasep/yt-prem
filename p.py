@@ -1,6 +1,8 @@
 from flask import Flask, jsonify, render_template_string, request
 import scrapetube
 import random
+import urllib.request
+import json
 
 app = Flask(__name__)
 
@@ -10,18 +12,33 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Valora Tube Clone</title>
+    <title>YouTube Clone</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto', Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
-        body { background: #0f0f0f; color: #f1f1f1; overflow-x: hidden; }
+        
+        /* ===== LATAR BELAKANG BERGERAK REALTIME ===== */
+        @keyframes bgGradientMove {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        body { 
+            background: linear-gradient(-45deg, #0f0f0f, #181111, #0f0f0f, #111818); 
+            background-size: 400% 400%; 
+            animation: bgGradientMove 15s ease infinite;
+            color: #f1f1f1; 
+            overflow-x: hidden; 
+            min-height: 100vh;
+        }
+        
         ::-webkit-scrollbar { width: 0; height: 0; display: none; }
         a { text-decoration: none; color: inherit; }
 
-        /* ===== ANIMASI LOADING ===== */
+        /* ===== ANIMASI LOADING & TRANSISI ===== */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -39,22 +56,52 @@ HTML_TEMPLATE = """
             animation: shimmer 2s infinite linear;
         }
 
-        /* ===== HEADER ===== */
-        #header { position: fixed; top: 0; left: 0; right: 0; height: 56px; background: #0f0f0f; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 100; }
-        .header-left { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-        .logo-icon { color: #ff0000; font-weight: 900; font-style: italic; font-size: 24px; letter-spacing: -2px; }
-        .logo-text { font-size: 20px; font-weight: 500; letter-spacing: -0.5px; }
+        /* ===== HEADER & LOGO YOUTUBE CSS ===== */
+        #header { position: fixed; top: 0; left: 0; right: 0; height: 56px; background: rgba(15,15,15,0.9); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 100; }
+        .header-left { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+        
+        .yt-logo-box {
+            display: flex;
+            align-items: center;
+            background: #ff0000;
+            width: 30px;
+            height: 20px;
+            border-radius: 5px;
+            justify-content: center;
+            position: relative;
+        }
+        .yt-logo-box::after {
+            content: "";
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+            border-left: 9px solid #fff;
+            left: 11px;
+        }
+        .yt-logo-text { font-size: 20px; font-weight: 700; letter-spacing: -1px; color: #fff; }
         
         .header-right { display: flex; align-items: center; gap: 8px; }
         .header-icon { background: transparent; border: none; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; width: 40px; height: 40px; border-radius: 50%; }
         
-        .search-form-mobile { display: none; position: absolute; inset: 0; background: #0f0f0f; padding: 0 12px; align-items: center; gap: 8px; z-index: 110; }
+        /* ===== FORM PENCARIAN & DROPDOWN REKOMENDASI (GAYA YOUTUBE) ===== */
+        .search-form-mobile { display: none; position: fixed; inset: 0; background: #0f0f0f; padding: 0 12px; flex-direction: column; z-index: 110; }
         .search-form-mobile.active { display: flex; }
-        .search-input-wrap-mob { flex: 1; display: flex; align-items: center; background: #222; border-radius: 20px; padding: 0 16px; height: 36px; }
+        .search-top-bar { display: flex; align-items: center; height: 56px; gap: 8px; width: 100%; flex-shrink: 0; }
+        .search-input-wrap-mob { flex: 1; display: flex; align-items: center; background: #222; border-radius: 20px; padding: 0 16px; height: 38px; }
         .search-input-wrap-mob input { flex: 1; background: transparent; border: none; color: #fff; font-size: 15px; outline: none; }
+        
+        /* Daftar Saran Pencarian Realtime */
+        .search-suggestions-list { flex: 1; overflow-y: auto; width: 100%; background: #0f0f0f; padding-top: 4px; }
+        .suggestion-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; color: #f1f1f1; font-size: 15px; cursor: pointer; }
+        .suggestion-item:active { background: rgba(255,255,255,0.1); }
+        .suggestion-left { display: flex; align-items: center; gap: 16px; }
+        .suggestion-left .material-icons-outlined { color: #aaa; font-size: 20px; }
+        .suggestion-arrow { color: #aaa; font-size: 18px; transform: rotate(45deg); }
 
         /* ===== CHIPS ===== */
-        .chips-wrapper { position: sticky; top: 56px; background: #0f0f0f; z-index: 10; padding: 12px 16px; display: flex; gap: 12px; align-items: center; }
+        .chips-wrapper { position: sticky; top: 56px; background: rgba(15,15,15,0.9); backdrop-filter: blur(10px); z-index: 10; padding: 12px 16px; display: flex; gap: 12px; align-items: center; }
         .explore-icon { background: #272727; padding: 6px; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .chips-bar { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
         .chip { padding: 6px 14px; border-radius: 8px; font-size: 14px; font-weight: 500; white-space: nowrap; border: none; background: #272727; color: #f1f1f1; cursor: pointer; transition: 0.2s; }
@@ -75,14 +122,13 @@ HTML_TEMPLATE = """
         .vid-meta { font-size: 13px; color: #aaa; }
 
         /* ===== PLAYER SECTION ===== */
-        #player-section { display: none; margin-top: 0; padding-bottom: 70px; min-height: 100vh; background: #0f0f0f; z-index: 200; position: absolute; top: 0; left: 0; width: 100%; transition: transform 0.25s ease; }
-        .player-container { width: 100%; aspect-ratio: 16/9; background: #000; position: sticky; top: 0; z-index: 105; transition: transform 0.25s ease; touch-action: none; }
+        #player-section { display: none; margin-top: 0; padding-bottom: 70px; min-height: 100vh; background: inherit; z-index: 200; position: absolute; top: 0; left: 0; width: 100%; transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        .player-container { width: 100%; aspect-ratio: 16/9; background: #000; position: sticky; top: 0; z-index: 105; touch-action: none; }
         .player-container iframe { width: 100%; height: 100%; border: none; pointer-events: auto; }
         
-        /* Custom Fullscreen tanpa pop-up nocookie */
         .css-fullscreen { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; max-width: none !important; aspect-ratio: auto !important; z-index: 99999 !important; border-radius: 0 !important; background: #000; display: flex; align-items: center; justify-content: center; }
 
-        .player-meta { padding: 12px 16px; }
+        .player-meta { padding: 12px 16px; background: rgba(15,15,15,0.5); backdrop-filter: blur(5px); }
         .player-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; line-height: 1.3; }
         .player-views-date { font-size: 13px; color: #aaa; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
         
@@ -99,7 +145,7 @@ HTML_TEMPLATE = """
         .comments-box { background: rgba(255,255,255,0.1); border-radius: 12px; padding: 12px 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500; }
 
         /* ===== MINI PLAYER ===== */
-        #mini-player { display: none; position: fixed; bottom: 50px; left: 0; right: 0; height: 56px; background: #1f1f1f; z-index: 99; align-items: center; padding: 0 12px; border-top: 1px solid rgba(255,255,255,0.1); }
+        #mini-player { display: none; position: fixed; bottom: 50px; left: 0; right: 0; height: 56px; background: rgba(31,31,31,0.95); backdrop-filter: blur(10px); z-index: 99; align-items: center; padding: 0 12px; border-top: 1px solid rgba(255,255,255,0.1); }
         #mini-player.active { display: flex; animation: fadeIn 0.3s; }
         .mini-thumb { width: 80px; height: 45px; background: #000; margin-right: 12px; cursor: pointer; position: relative; flex-shrink: 0; }
         .mini-thumb img { width: 100%; height: 100%; object-fit: cover; }
@@ -110,7 +156,7 @@ HTML_TEMPLATE = """
         .mini-actions .material-icons { font-size: 26px; cursor: pointer; }
 
         /* ===== BOTTOM NAV ===== */
-        #bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 50px; background: #0f0f0f; z-index: 100; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); }
+        #bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 50px; background: rgba(15,15,15,0.9); backdrop-filter: blur(10px); z-index: 100; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); }
         .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; flex: 1; height: 100%; cursor: pointer; opacity: 0.7; }
         .nav-item.active { opacity: 1; color: #fff; }
         .nav-item.active .material-icons-outlined { display: none; }
@@ -131,7 +177,6 @@ HTML_TEMPLATE = """
         .setting-item:hover { background: rgba(255,255,255,0.1); }
         .setting-item .material-icons-outlined { font-size: 24px; color: #f1f1f1; }
         
-        /* Loader Spinner */
         #scroll-loader { display: none; justify-content: center; padding: 20px 0; }
         .spinner { width: 30px; height: 30px; border: 3px solid #333; border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
     </style>
@@ -140,8 +185,8 @@ HTML_TEMPLATE = """
 
 <header id="header">
     <div class="header-left" onclick="goHome(event)">
-        <span class="logo-icon">a</span>
-        <span class="logo-text">Valora Tube</span>
+        <div class="yt-logo-box"></div>
+        <span class="yt-logo-text">YouTube</span>
     </div>
 
     <div class="header-right">
@@ -150,13 +195,17 @@ HTML_TEMPLATE = """
         <button class="header-icon"><span class="material-icons-outlined">more_vert</span></button>
     </div>
     
-    <form class="search-form-mobile" id="mobile-search-form" onsubmit="searchVideos(event)">
-        <button type="button" class="header-icon" onclick="toggleSearch(false)"><span class="material-icons-outlined">arrow_back</span></button>
-        <div class="search-input-wrap-mob">
-            <input type="text" id="keyword-mobile" placeholder="Telusuri Valora Tube" autocomplete="off">
+    <!-- Formulir & Rekomendasi Pencarian Realtime -->
+    <div class="search-form-mobile" id="mobile-search-form">
+        <div class="search-top-bar">
+            <button type="button" class="header-icon" onclick="toggleSearch(false)"><span class="material-icons-outlined">arrow_back</span></button>
+            <div class="search-input-wrap-mob">
+                <input type="text" id="keyword-mobile" placeholder="Telusuri YouTube" autocomplete="off" oninput="fetchSuggestions(this.value)">
+            </div>
+            <button type="button" class="header-icon" style="background:#222;" onclick="submitSearch()"><span class="material-icons-outlined" style="font-size:20px;">search</span></button>
         </div>
-        <button type="button" class="header-icon" style="background:#222;" onclick="searchVideos(event)"><span class="material-icons-outlined" style="font-size:20px;">search</span></button>
-    </form>
+        <div class="search-suggestions-list" id="suggestions-list"></div>
+    </div>
 </header>
 
 <main id="main">
@@ -176,7 +225,6 @@ HTML_TEMPLATE = """
 </main>
 
 <div id="player-section">
-    <!-- Kontainer Video dengan Fitur Geser ke Bawah (Swipe-Down) -->
     <div class="player-container" id="player-container-box">
         <div id="player-box" style="width:100%; height:100%;"></div>
     </div>
@@ -274,8 +322,8 @@ HTML_TEMPLATE = """
         <span class="nav-label">Trending</span>
     </div>
     <div class="nav-item">
-        <div class="nav-avatar">V</div>
-        <span class="nav-label">Valora</span>
+        <div class="nav-avatar">Y</div>
+        <span class="nav-label">Anda</span>
     </div>
 </nav>
 
@@ -294,9 +342,13 @@ HTML_TEMPLATE = """
     window.addEventListener('popstate', (e) => {
         const sheet = document.getElementById('settings-sheet');
         const playerSec = document.getElementById('player-section');
+        const searchForm = document.getElementById('mobile-search-form');
         
         if (sheet.classList.contains('show')) {
             closeSettings();
+            history.pushState({page: 'home'}, '', '');
+        } else if (searchForm.classList.contains('active')) {
+            toggleSearch(false);
             history.pushState({page: 'home'}, '', '');
         } else if (playerSec.style.display === 'block') {
             minimizePlayerToMini();
@@ -342,12 +394,54 @@ HTML_TEMPLATE = """
     function toggleSearch(show) {
         const form = document.getElementById('mobile-search-form');
         const input = document.getElementById('keyword-mobile');
-        if (show) { form.classList.add('active'); input.focus(); } 
-        else { form.classList.remove('active'); input.value = ''; }
+        if (show) { 
+            form.classList.add('active'); 
+            input.focus(); 
+            history.pushState({page: 'search'}, '', '');
+        } else { 
+            form.classList.remove('active'); 
+            input.value = ''; 
+            document.getElementById('suggestions-list').innerHTML = '';
+        }
     }
 
-    function searchVideos(e) {
-        e.preventDefault(); 
+    // Mengambil Saran Pencarian Realtime dari Backend
+    async function fetchSuggestions(keyword) {
+        const listContainer = document.getElementById('suggestions-list');
+        if (!keyword.trim()) {
+            listContainer.innerHTML = '';
+            return;
+        }
+        try {
+            const res = await fetch(`/api/suggestions?q=${encodeURIComponent(keyword)}`);
+            const suggestions = await res.json();
+            listContainer.innerHTML = '';
+            suggestions.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'suggestion-item';
+                div.innerHTML = `
+                    <div class="suggestion-left" onclick="selectSuggestion('${item}')">
+                        <span class="material-icons-outlined">search</span>
+                        <span>${item}</span>
+                    </div>
+                    <span class="material-icons suggestion-arrow" onclick="fillInput('${item}')">north_west</span>
+                `;
+                listContainer.appendChild(div);
+            });
+        } catch(e) {}
+    }
+
+    function fillInput(text) {
+        document.getElementById('keyword-mobile').value = text;
+        document.getElementById('keyword-mobile').focus();
+    }
+
+    function selectSuggestion(text) {
+        document.getElementById('keyword-mobile').value = text;
+        submitSearch();
+    }
+
+    function submitSearch() {
         const q = document.getElementById('keyword-mobile').value.trim();
         if (q) { 
             activateNav(document.querySelector('.nav-item')); 
@@ -407,7 +501,6 @@ HTML_TEMPLATE = """
         } catch(e){}
     }
 
-    /* BOTTOM SHEET PENGATURAN */
     function openSettings() {
         document.getElementById('sheet-overlay').classList.add('show');
         setTimeout(() => document.getElementById('settings-sheet').classList.add('show'), 10);
@@ -443,7 +536,6 @@ HTML_TEMPLATE = """
         alert('Kualitas video diatur ke ' + res + 'p');
     }
 
-    /* CUSTOM FULLSCREEN */
     function toggleCustomFullscreen() {
         const box = document.getElementById('player-container-box');
         const icon = document.getElementById('fs-icon');
@@ -471,9 +563,10 @@ HTML_TEMPLATE = """
         document.body.style.overflow = '';
 
         const ps = document.getElementById('player-section');
+        ps.style.transition = 'none';
         ps.style.transform = 'translateY(0)';
         document.getElementById('player-title').textContent = v.title;
-        document.getElementById('player-channel-name').textContent = v.channel || 'Valora Music';
+        document.getElementById('player-channel-name').textContent = v.channel || 'YouTube Music';
         document.getElementById('player-channel-avatar').src = v.avatar || '';
         document.getElementById('player-views').textContent = (v.views || '123 rb tampilan') + ' • ' + (v.published || 'Baru saja');
         
@@ -492,6 +585,7 @@ HTML_TEMPLATE = """
 
     function minimizePlayerToMini() {
         const ps = document.getElementById('player-section');
+        ps.style.transition = 'transform 0.25s ease';
         ps.style.transform = 'translateY(100%)';
         setTimeout(() => {
             ps.style.display = 'none';
@@ -507,6 +601,7 @@ HTML_TEMPLATE = """
         document.getElementById('main').style.display = 'none';
         document.getElementById('mini-player').classList.remove('active');
         const ps = document.getElementById('player-section');
+        ps.style.transition = 'none';
         ps.style.display = 'block';
         ps.style.transform = 'translateY(0)';
     }
@@ -520,7 +615,6 @@ HTML_TEMPLATE = """
         document.body.style.overflow = '';
     }
 
-    /* FITUR SWIPE-DOWN (GESER VIDEO KE BAWAH) */
     let startY = 0;
     let currentY = 0;
     let isDragging = false;
@@ -531,6 +625,7 @@ HTML_TEMPLATE = """
         if (playerContainer.classList.contains('css-fullscreen')) return;
         startY = e.touches[0].clientY;
         isDragging = true;
+        playerSec.style.transition = 'none';
     });
 
     playerContainer.addEventListener('touchmove', (e) => {
@@ -546,6 +641,7 @@ HTML_TEMPLATE = """
         if (!isDragging || playerContainer.classList.contains('css-fullscreen')) return;
         isDragging = false;
         let diff = currentY - startY;
+        playerSec.style.transition = 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)';
         if (diff > 120) {
             minimizePlayerToMini();
         } else {
@@ -571,7 +667,7 @@ HTML_TEMPLATE = """
             card.className = 'vid-card fade-in';
             const vStr = encodeURIComponent(JSON.stringify(v));
             card.onclick = () => playVideo(vStr);
-            let initial = v.channel ? v.channel.charAt(0).toUpperCase() : 'V';
+            let initial = v.channel ? v.channel.charAt(0).toUpperCase() : 'Y';
             let avatarHtml = v.avatar ? `<div class="channel-avatar"><img src="${v.avatar}"></div>` : `<div class="channel-avatar">${initial}</div>`;
             let meta = [v.channel, v.views, v.published].filter(Boolean).join(' • ');
             
@@ -630,9 +726,35 @@ def extract_video_data(video):
 @app.route("/")
 def home(): return render_template_string(HTML_TEMPLATE)
 
+# Route Backend untuk Menarik Saran Pencarian Realtime ala YouTube
+@app.route("/api/suggestions")
+def api_suggestions():
+    query = request.args.get("q", "").strip()
+    suggestions = []
+    if not query:
+        return jsonify(suggestions)
+    try:
+        url = f"http://suggestqueries.google.com/complete/search?client=youtube&ds=yt&q={urllib.request.quote(query)}"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req) as response:
+            data = response.read().decode('latin1')
+            # Format respons google suggest biasanya: window.google.ac.h([...])
+            start = data.find('([')
+            end = data.rfind('])')
+            if start != -1 and end != -1:
+                json_str = data[start+1:end+1]
+                parsed = json.loads(json_str)
+                for item in parsed:
+                    if isinstance(item, list):
+                        for sub in item:
+                            if isinstance(sub, list) and len(sub) > 0 and isinstance(sub[0], str):
+                                suggestions.append(sub[0])
+    except Exception:
+        pass
+    return jsonify(suggestions[:12])
+
 @app.route("/api/home")
 def api_home():
-    """ Generates a random viral/hits feed like real YouTube Home """
     results = []
     try:
         base_keywords = ["Viral 2024", "Hits Indonesia", "Populer Hari Ini", "Trending Video", "Podcast Indonesia terbaru", "Gaming Indonesia"]
