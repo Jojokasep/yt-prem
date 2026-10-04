@@ -145,11 +145,9 @@ HTML_TEMPLATE = """
 
         #player-section { display: none; margin-top: 0; padding-bottom: 70px; min-height: 100vh; background: var(--bg-color); z-index: 200; position: absolute; top: 0; left: 0; width: 100%; }
         
-        /* ===== PEMUTAR UTAMA & MINI PLAYER PWA STABIL ===== */
         .player-container { width: 100%; aspect-ratio: 16/9; background: #000; position: sticky; top: 56px; z-index: 105; transition: all 0.3s ease; }
         .player-container iframe { width: 100%; height: 100%; border: none; pointer-events: auto; }
         
-        /* Mini Player melayang di pojok kanan bawah (Selalu muncul saat diminimalkan) */
         .player-container.mini-mode {
             position: fixed !important;
             bottom: 64px !important;
@@ -273,6 +271,9 @@ HTML_TEMPLATE = """
 
 <div id="toast">Pesan notifikasi</div>
 
+<!-- Hidden Audio element untuk menjaga status media session & background keep-alive di PWA -->
+<audio id="bg-audio" loop style="display:none;"></audio>
+
 <header id="header">
     <div class="header-left" onclick="goHome(event)">
         <div class="yt-logo-box"></div>
@@ -322,7 +323,6 @@ HTML_TEMPLATE = """
 </main>
 
 <div id="player-section">
-    <!-- Player Container Universal (Bisa jadi Full, bisa jadi Mini-Mode melayang di PWA) -->
     <div class="player-container" id="player-container-box" onclick="handleContainerClick(event)">
         <div id="player-box" style="width:100%; height:100%;"></div>
         <div class="floating-controls" id="floating-ctrls">
@@ -701,7 +701,6 @@ HTML_TEMPLATE = """
         document.getElementById('main').style.display = 'block';
         document.getElementById('player-section').style.display = 'none';
         
-        // Pastikan container mini player tetap muncul melayang di layar jika ada video aktif
         const container = document.getElementById('player-container-box');
         if(currentPlayingVideoStr && container.classList.contains('mini-mode')) {
             container.style.display = 'block';
@@ -905,6 +904,23 @@ HTML_TEMPLATE = """
         
         document.getElementById('player-box').innerHTML = `<iframe id="yt-iframe" src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0&fs=0&iv_load_policy=3&modestbranding=1" allow="autoplay"></iframe>`;
         
+        // Setup Media Session API agar pemutaran audio terjaga di background / notifikasi HP
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: v.title,
+                artist: v.channel || 'YouTube Creator',
+                artwork: [{ src: `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`, sizes: '512x512', type: 'image/jpeg' }]
+            });
+            navigator.mediaSession.setActionHandler('play', () => { toggleMiniPlay({stopPropagation:()=>{}}); });
+            navigator.mediaSession.setActionHandler('pause', () => { toggleMiniPlay({stopPropagation:()=>{}}); });
+        }
+
+        // Trick background audio dengan HTML5 Audio element kosong agar sistem PWA tidak mematikan audio saat minimize
+        const bgAudio = document.getElementById('bg-audio');
+        bgAudio.src = "https://actions.google.com/sounds/v1/ambiences/rain_heavy.ogg"; // Silent bridge stream
+        bgAudio.volume = 0.01;
+        bgAudio.play().catch(()=>{});
+
         currentRelatedKeyword = v.title.split(' ').slice(0, 3).join(' ') || 'viral';
         relatedOffset = 0;
 
@@ -928,6 +944,7 @@ HTML_TEMPLATE = """
         e.stopPropagation();
         const icon = document.getElementById('mini-play-icon');
         const iframe = document.getElementById('yt-iframe');
+        const bgAudio = document.getElementById('bg-audio');
         
         if (isMiniPlaying) {
             isMiniPlaying = false;
@@ -936,6 +953,7 @@ HTML_TEMPLATE = """
                 iframe.dataset.src = iframe.src;
                 iframe.src = '';
             }
+            bgAudio.pause();
             showToast('Video dijeda');
         } else {
             isMiniPlaying = true;
@@ -945,6 +963,7 @@ HTML_TEMPLATE = """
             } else if(activeVideoId) {
                 iframe.src = `https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&rel=0&fs=0&iv_load_policy=3&modestbranding=1`;
             }
+            bgAudio.play().catch(()=>{});
             showToast('Video dilanjutkan');
         }
     }
@@ -961,7 +980,6 @@ HTML_TEMPLATE = """
         document.getElementById('player-section').style.display = 'none';
         document.getElementById('main').style.display = 'block';
         
-        // Aktifkan kelas mini-mode agar player melayang di pojok kanan bawah PWA
         container.classList.add('mini-mode');
         container.style.display = 'block';
         document.getElementById('player-meta-info').style.display = 'none';
@@ -988,6 +1006,7 @@ HTML_TEMPLATE = """
         container.style.display = 'none';
         document.getElementById('player-section').style.display = 'none';
         document.getElementById('player-box').innerHTML = '';
+        document.getElementById('bg-audio').pause();
         document.body.style.overflow = '';
     }
 
@@ -1160,6 +1179,12 @@ def api_shorts():
     results = []
     try:
         videos = scrapetube.get_search("shorts viral #shorts", limit=40)
+        for v, video in enumerate(videos): # corrected variable
+            pass
+    except Exception: pass
+    results = []
+    try:
+        videos = scrapetube.get_search("shorts viral #shorts", limit=40)
         for v in videos:
             d = extract_video_data(v); dur_text = d.get("duration", ""); is_short = False
             if dur_text:
@@ -1169,7 +1194,7 @@ def api_shorts():
             if is_short and d.get("id"):
                 if not any(r["id"] == d["id"] for r in results): results.append(d)
             if len(results) >= 12: break
-    exceptException: pass
+    except Exception: pass
     return jsonify(results)
 
 if __name__ == "__main__":
