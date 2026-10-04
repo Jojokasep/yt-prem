@@ -23,7 +23,7 @@ HTML_TEMPLATE = """
         ::-webkit-scrollbar-thumb { background: #717171; border-radius: 4px; }
         a { text-decoration: none; color: inherit; }
 
-        /* ===== HEADER (UMUM) ===== */
+        /* ===== HEADER ===== */
         #header { position: fixed; top: 0; left: 0; right: 0; height: 56px; background: #0f0f0f; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 100; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .header-left { display: flex; align-items: center; gap: 16px; }
         .yt-logo { display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; }
@@ -47,7 +47,7 @@ HTML_TEMPLATE = """
         .search-input-wrap-mob input { flex: 1; background: transparent; border: none; color: #fff; font-size: 15px; outline: none; }
         .search-btn-mobile-toggle { display: none; background: transparent; border: none; color: #fff; cursor: pointer; padding: 8px; }
 
-        /* ===== SIDEBAR (DESKTOP) ===== */
+        /* ===== SIDEBAR ===== */
         #sidebar { position: fixed; top: 56px; left: 0; width: 240px; height: calc(100vh - 56px); background: #0f0f0f; overflow-y: auto; padding: 12px 0; z-index: 90; }
         .sidebar-item { display: flex; align-items: center; gap: 24px; padding: 0 12px; height: 40px; cursor: pointer; border-radius: 10px; margin: 0 12px; transition: background 0.15s; }
         .sidebar-item:hover { background: rgba(255,255,255,0.1); }
@@ -56,7 +56,7 @@ HTML_TEMPLATE = """
         .sidebar-label { font-size: 14px; }
         .sidebar-divider { height: 1px; background: rgba(255,255,255,0.1); margin: 12px 0; }
 
-        /* ===== BOTTOM NAV (MOBILE) ===== */
+        /* ===== BOTTOM NAV ===== */
         #bottom-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: 50px; background: #0f0f0f; border-top: 1px solid rgba(255,255,255,0.05); z-index: 100; justify-content: space-around; align-items: center; }
         .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; flex: 1; height: 100%; cursor: pointer; }
         .nav-item .material-icons-outlined, .nav-item .material-icons { font-size: 24px; }
@@ -66,21 +66,18 @@ HTML_TEMPLATE = """
 
         /* ===== MAIN CONTENT & GRID ===== */
         #main { margin-left: 240px; margin-top: 56px; padding: 24px; min-height: 100vh; }
-        
         .chips-wrapper { position: sticky; top: 56px; background: #0f0f0f; z-index: 10; padding: 12px 0; margin-bottom: 24px; }
         .chips-bar { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; }
         .chips-bar::-webkit-scrollbar { display: none; }
         .chip { padding: 6px 12px; border-radius: 8px; font-size: 14px; font-weight: 500; white-space: nowrap; border: none; background: #272727; color: #f1f1f1; cursor: pointer; }
         .chip.active { background: #f1f1f1; color: #0f0f0f; }
-
-        .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 40px 16px; }
         
+        .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 40px 16px; }
         .vid-card { cursor: pointer; display: flex; flex-direction: column; gap: 12px; }
         .thumb-wrap { position: relative; width: 100%; aspect-ratio: 16/9; background: #272727; border-radius: 12px; overflow: hidden; }
         .thumb-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
         .vid-card:hover .thumb-img { transform: scale(1.05); }
         .duration-badge { position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.8); color: #fff; font-size: 12px; font-weight: 500; padding: 3px 6px; border-radius: 4px; }
-        
         .vid-info { display: flex; gap: 12px; align-items: flex-start; }
         .channel-avatar { width: 36px; height: 36px; border-radius: 50%; background: #444; flex-shrink: 0; overflow: hidden; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:bold; }
         .channel-avatar img { width: 100%; height: 100%; object-fit: cover; }
@@ -90,18 +87,23 @@ HTML_TEMPLATE = """
 
         /* ===== PLAYER SECTION ===== */
         #player-section { display: none; margin-left: 240px; margin-top: 56px; padding: 24px; max-width: 1280px; }
-        .player-container { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden; }
+        .player-container { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden; transition: all 0.3s ease; }
         .player-container iframe { width: 100%; height: 100%; border: none; }
         
+        /* CUSTOM CSS FULLSCREEN */
+        .css-fullscreen { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; max-width: none !important; aspect-ratio: auto !important; z-index: 99999 !important; border-radius: 0 !important; background: #000; display: flex; align-items: center; justify-content: center; }
+        .close-fs-btn { display: none; position: fixed; top: 16px; right: 16px; z-index: 100000; background: rgba(0,0,0,0.6); color: #fff; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; align-items: center; justify-content: center; }
+        .close-fs-btn.show { display: flex; }
+
         .player-meta { padding: 20px 0; }
         .player-title { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
-        
         .channel-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; }
         .channel-info { display: flex; align-items: center; gap: 12px; }
         .channel-name { font-weight: 600; font-size: 16px; }
         .btn-subscribe { background: #f1f1f1; color: #0f0f0f; font-weight: 600; border: none; padding: 10px 20px; border-radius: 20px; font-size: 14px; cursor: pointer; }
         
-        .action-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+        .action-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+        .action-row::-webkit-scrollbar { display: none; }
         .action-pill { display: flex; align-items: center; gap: 6px; background: #272727; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
         .action-pill:hover { background: #3f3f3f; }
         
@@ -212,7 +214,11 @@ HTML_TEMPLATE = """
 </main>
 
 <div id="player-section">
+    <!-- Tombol Close Fullscreen -->
+    <button id="close-fs" class="close-fs-btn" onclick="toggleCustomFullscreen()"><span class="material-icons-outlined">close_fullscreen</span></button>
+    
     <div class="player-container" id="player-box"></div>
+    
     <div class="player-meta">
         <div class="player-title" id="player-title">Judul Video</div>
         
@@ -227,10 +233,11 @@ HTML_TEMPLATE = """
             <button class="btn-subscribe">Subscribe</button>
         </div>
         
+        <!-- Tombol Aksi yang Murni Berfungsi -->
         <div class="action-row">
-            <!-- Hanya Suka dan Tonton Nanti -->
             <div class="action-pill" onclick="alert('Disukai!')"><span class="material-icons-outlined">thumb_up</span> Suka</div>
             <div class="action-pill" onclick="saveTontonNanti()"><span class="material-icons-outlined">schedule</span> Tonton Nanti</div>
+            <div class="action-pill" onclick="toggleCustomFullscreen()"><span class="material-icons-outlined">fullscreen</span> Perbesar</div>
         </div>
         
         <div class="comments-box">
@@ -275,7 +282,7 @@ HTML_TEMPLATE = """
     let currentQuery = '';
     let currentOffset = 0;
     let isLoadingMore = false;
-    let currentPlayingVideoStr = ''; // Menyimpan data video aktif
+    let currentPlayingVideoStr = ''; 
     
     window.addEventListener('DOMContentLoaded', () => { loadHome(); });
     
@@ -389,7 +396,6 @@ HTML_TEMPLATE = """
             let v = JSON.parse(decodeURIComponent(currentPlayingVideoStr));
             let wl = JSON.parse(localStorage.getItem('yt_watch_later') || '[]');
             
-            // Cek jika sudah ada
             if(!wl.find(x => x.id === v.id)) {
                 wl.unshift(v);
                 localStorage.setItem('yt_watch_later', JSON.stringify(wl));
@@ -400,24 +406,44 @@ HTML_TEMPLATE = """
         } catch(e){}
     }
 
+    function toggleCustomFullscreen() {
+        const pb = document.getElementById('player-box');
+        const btn = document.getElementById('close-fs');
+        
+        pb.classList.toggle('css-fullscreen');
+        
+        if(pb.classList.contains('css-fullscreen')) {
+            btn.classList.add('show');
+            document.body.style.overflow = 'hidden'; 
+        } else {
+            btn.classList.remove('show');
+            document.body.style.overflow = '';
+        }
+    }
+
     function playVideo(videoStr) {
         let v; try { v = JSON.parse(decodeURIComponent(videoStr)); } catch(e){ return; }
+        currentPlayingVideoStr = videoStr; 
         
-        currentPlayingVideoStr = videoStr; // Menyimpan status video saat ini
-        
-        // Save to History
         let hist = JSON.parse(localStorage.getItem('yt_history') || '[]');
         hist = hist.filter(x => x.id !== v.id); hist.unshift(v);
         if(hist.length > 50) hist.pop(); localStorage.setItem('yt_history', JSON.stringify(hist));
 
         document.getElementById('main').style.display = 'none';
         document.getElementById('profile-section').style.display = 'none';
-        const ps = document.getElementById('player-section');
         
+        // Matikan class fullscreen jika video baru di klik
+        document.getElementById('player-box').classList.remove('css-fullscreen');
+        document.getElementById('close-fs').classList.remove('show');
+        document.body.style.overflow = '';
+
+        const ps = document.getElementById('player-section');
         document.getElementById('player-title').textContent = v.title;
         document.getElementById('player-channel-name').textContent = v.channel || 'Channel Name';
         document.getElementById('player-channel-avatar').src = v.avatar || '';
-        document.getElementById('player-box').innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0" allow="autoplay;fullscreen"></iframe>`;
+        
+        // PENTING: Menghapus properti `allow="fullscreen"` dan menambahkan `fs=0` untuk menonaktifkan API bawaan YT
+        document.getElementById('player-box').innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0&fs=0" allow="autoplay"></iframe>`;
         
         ps.style.display = 'block'; window.scrollTo(0,0);
     }
