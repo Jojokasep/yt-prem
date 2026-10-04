@@ -97,8 +97,9 @@ HTML_TEMPLATE = """
         #header { position: fixed; top: 0; left: 0; right: 0; height: 56px; background: var(--surface-color); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 100; border-bottom: 1px solid var(--border-color); }
         .header-left { display: flex; align-items: center; gap: 8px; cursor: pointer; }
         
-        /* Valora Logo style seperti digambar */
-        .valora-logo-circle { width: 28px; height: 28px; border-radius: 50%; background: var(--accent-color); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold; font-size: 14px; }
+        /* Logo YouTube Original style + Valora Tube text */
+        .yt-logo-box { display: flex; align-items: center; background: #ff0000; width: 32px; height: 22px; border-radius: 5px; justify-content: center; position: relative; flex-shrink: 0; }
+        .yt-logo-box::after { content: ""; position: absolute; width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 9px solid #fff; left: 12px; }
         .valora-brand-text { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; color: var(--text-color); font-family: 'Roboto', sans-serif; }
         .valora-brand-text span { color: var(--accent-color); }
         
@@ -147,10 +148,11 @@ HTML_TEMPLATE = """
 
         #player-section { display: none; margin-top: 0; padding-bottom: 70px; min-height: 100vh; background: var(--bg-color); z-index: 200; position: absolute; top: 0; left: 0; width: 100%; }
         
+        /* Pemutar stabil, posisinya sticky di atas dan tidak berubah jadi mini player saat scroll */
         .player-container { width: 100%; aspect-ratio: 16/9; background: #000; position: sticky; top: 56px; z-index: 105; transition: all 0.3s ease; cursor: pointer; }
         .player-container iframe { width: 100%; height: 100%; border: none; pointer-events: auto; }
         
-        /* Overlay Kontrol Pemutar seperti di Screenshot 14-16 */
+        /* Overlay Kontrol Pemutar */
         .player-overlay-ui {
             position: absolute; inset: 0; background: rgba(0,0,0,0.4);
             display: flex; flex-direction: column; justify-content: space-between;
@@ -171,13 +173,6 @@ HTML_TEMPLATE = """
         .overlay-timeline-progress { width: 35%; height: 100%; background: var(--accent-color); border-radius: 2px; position: relative; }
         .overlay-timeline-progress::after { content: ""; position: absolute; right: -4px; top: -3px; width: 9px; height: 9px; background: #fff; border-radius: 50%; }
         .overlay-time-info { display: flex; justify-content: space-between; font-size: 11px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
-
-        .player-container.mini-mode {
-            position: fixed !important; bottom: 64px !important; right: 16px !important; top: auto !important; left: auto !important;
-            width: 220px !important; height: 124px !important; aspect-ratio: auto !important; border-radius: 12px !important;
-            z-index: 999999 !important; box-shadow: 0 8px 24px rgba(0,0,0,0.9); border: 2px solid rgba(255,255,255,0.4); overflow: hidden; display: block !important;
-        }
-        .player-container.mini-mode iframe { pointer-events: none; }
 
         .css-fullscreen { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; max-width: none !important; aspect-ratio: auto !important; z-index: 999999 !important; border-radius: 0 !important; background: #000; display: flex; align-items: center; justify-content: center; }
 
@@ -268,7 +263,7 @@ HTML_TEMPLATE = """
 
 <header id="header">
     <div class="header-left" onclick="goHome(event)">
-        <div class="valora-logo-circle">V</div>
+        <div class="yt-logo-box"></div>
         <span class="valora-brand-text">Valora<span>Tube</span></span>
     </div>
     <div class="header-right">
@@ -318,7 +313,7 @@ HTML_TEMPLATE = """
     <div class="player-container" id="player-container-box" onclick="toggleOverlayUI(event)">
         <div id="player-box" style="width:100%; height:100%;"></div>
         
-        <!-- Overlay UI interaktif persis seperti di gambar 14-16 -->
+        <!-- Overlay UI interaktif -->
         <div class="player-overlay-ui" id="player-overlay">
             <div class="overlay-top">
                 <div class="overlay-top-left">
@@ -496,12 +491,12 @@ HTML_TEMPLATE = """
         }
     });
 
+    // Scroll listener hanya untuk infinite scroll beranda atau related video, tanpa mengubah ukuran pemutar menjadi mini
     window.addEventListener('scroll', () => {
         if (isLoadingMore) return;
         
         const mainDisplay = document.getElementById('main').style.display;
         const playerDisplay = document.getElementById('player-section').style.display;
-        const container = document.getElementById('player-container-box');
 
         if (mainDisplay !== 'none' && currentQuery !== 'shorts') {
             if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 300) {
@@ -510,12 +505,6 @@ HTML_TEMPLATE = """
         }
         
         if (playerDisplay === 'block') {
-            if (window.scrollY > 240) {
-                container.classList.add('mini-mode');
-            } else {
-                container.classList.remove('mini-mode');
-            }
-
             if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 300) {
                 loadMoreRelatedData();
             }
@@ -721,7 +710,6 @@ HTML_TEMPLATE = """
         document.getElementById('player-section').style.display = 'none';
         
         const container = document.getElementById('player-container-box');
-        container.classList.remove('mini-mode');
         container.style.display = 'none';
     }
 
@@ -911,7 +899,6 @@ HTML_TEMPLATE = """
         document.getElementById('main').style.display = 'none';
         
         const container = document.getElementById('player-container-box');
-        container.classList.remove('mini-mode', 'css-fullscreen');
         container.style.display = 'block';
         document.body.style.overflow = '';
 
