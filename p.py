@@ -102,7 +102,7 @@ HTML_TEMPLATE = """
         .btn-subscribe { background: #f1f1f1; color: #0f0f0f; font-weight: 600; border: none; padding: 10px 20px; border-radius: 20px; font-size: 14px; cursor: pointer; }
         
         .action-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
-        .action-pill { display: flex; align-items: center; gap: 6px; background: #272727; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+        .action-pill { display: flex; align-items: center; gap: 6px; background: #272727; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
         .action-pill:hover { background: #3f3f3f; }
         
         .comments-box { background: #272727; border-radius: 12px; padding: 16px; margin-top: 16px; }
@@ -113,7 +113,6 @@ HTML_TEMPLATE = """
         .profile-avatar { width: 72px; height: 72px; border-radius: 50%; background: #ff4e45; color: #fff; font-size: 32px; display: flex; align-items: center; justify-content: center; }
         .profile-name { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
         .profile-handle { font-size: 14px; color: #aaa; margin-bottom: 12px; }
-        .profile-btn { background: #272727; border: none; color: #fff; padding: 6px 12px; border-radius: 16px; font-size: 13px; font-weight: 500; cursor: pointer; }
         
         .horizontal-list { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 16px; scrollbar-width: none; }
         .horizontal-list::-webkit-scrollbar { display: none; }
@@ -173,14 +172,11 @@ HTML_TEMPLATE = """
             <input type="text" id="keyword-desktop" placeholder="Telusuri" autocomplete="off">
         </div>
         <button type="submit" class="search-btn-desk"><span class="material-icons-outlined">search</span></button>
-        <button type="button" class="header-icon" style="background:#181818; margin-left:12px;"><span class="material-icons-outlined">mic</span></button>
     </form>
 
     <div class="header-right">
         <button class="search-btn-mobile-toggle" onclick="toggleMobileSearch(true)"><span class="material-icons-outlined">search</span></button>
-        <button class="header-icon"><span class="material-icons-outlined">cast</span></button>
-        <button class="header-icon"><span class="material-icons-outlined">notifications_none</span></button>
-        <div class="nav-avatar" style="margin-left:8px; width:32px; height:32px;">t</div>
+        <div class="nav-avatar" style="margin-left:8px; width:32px; height:32px; cursor:pointer;" onclick="showProfile(document.querySelector('.nav-item:last-child'))">t</div>
     </div>
     
     <!-- Search Mobile -->
@@ -189,16 +185,16 @@ HTML_TEMPLATE = """
         <div class="search-input-wrap-mob">
             <input type="text" id="keyword-mobile" placeholder="Telusuri YouTube" autocomplete="off">
         </div>
-        <button type="button" class="header-icon" style="background:#222; border-radius:50%; width:36px; height:36px;"><span class="material-icons-outlined" style="font-size:20px;">mic</span></button>
+        <button type="button" class="header-icon" style="background:#222; border-radius:50%; width:36px; height:36px;" onclick="searchVideos(event, 'mobile')"><span class="material-icons-outlined" style="font-size:20px;">search</span></button>
     </form>
 </header>
 
 <nav id="sidebar">
     <div class="sidebar-item active" onclick="goHome(event)"><span class="material-icons-outlined">home</span><span class="sidebar-label">Beranda</span></div>
     <div class="sidebar-item" onclick="loadShorts(this)"><span class="material-icons-outlined">play_circle</span><span class="sidebar-label">Shorts</span></div>
-    <div class="sidebar-item"><span class="material-icons-outlined">subscriptions</span><span class="sidebar-label">Subscription</span></div>
     <div class="sidebar-divider"></div>
     <div class="sidebar-item" onclick="showProfile(this)"><span class="material-icons-outlined">history</span><span class="sidebar-label">Histori</span></div>
+    <div class="sidebar-item" onclick="showProfile(this)"><span class="material-icons-outlined">schedule</span><span class="sidebar-label">Tonton Nanti</span></div>
 </nav>
 
 <main id="main">
@@ -232,10 +228,9 @@ HTML_TEMPLATE = """
         </div>
         
         <div class="action-row">
-            <div class="action-pill"><span class="material-icons-outlined">thumb_up</span> Suka</div>
-            <div class="action-pill"><span class="material-icons-outlined">thumb_down</span></div>
-            <div class="action-pill"><span class="material-icons-outlined">reply</span> Bagikan</div>
-            <div class="action-pill"><span class="material-icons-outlined">download</span> Download</div>
+            <!-- Hanya Suka dan Tonton Nanti -->
+            <div class="action-pill" onclick="alert('Disukai!')"><span class="material-icons-outlined">thumb_up</span> Suka</div>
+            <div class="action-pill" onclick="saveTontonNanti()"><span class="material-icons-outlined">schedule</span> Tonton Nanti</div>
         </div>
         
         <div class="comments-box">
@@ -253,12 +248,15 @@ HTML_TEMPLATE = """
         <div class="profile-avatar">t</div>
         <div>
             <div class="profile-name">teu apal</div>
-            <div class="profile-handle">@teuapal • Lihat channel</div>
-            <button class="profile-btn">Buat channel</button>
+            <div class="profile-handle">@teuapal</div>
         </div>
     </div>
+    
     <div style="padding: 16px; font-size: 18px; font-weight: 700;">Histori</div>
     <div class="horizontal-list" id="history-scroll"></div>
+
+    <div style="padding: 16px; font-size: 18px; font-weight: 700;">Tonton Nanti</div>
+    <div class="horizontal-list" id="watch-later-scroll"></div>
 </div>
 
 <nav id="bottom-nav">
@@ -267,12 +265,6 @@ HTML_TEMPLATE = """
     </div>
     <div class="nav-item" onclick="loadShorts(this)">
         <span class="material-icons-outlined">play_circle</span><span class="nav-label">Shorts</span>
-    </div>
-    <div class="nav-item" onclick="alert('Fitur upload video segera hadir')">
-        <span class="material-icons-outlined" style="font-size: 36px; font-weight: 200;">add_circle_outline</span>
-    </div>
-    <div class="nav-item" onclick="activateNav(this); alert('Menu Subscription')">
-        <span class="material-icons-outlined">subscriptions</span><span class="nav-label">Subscription</span>
     </div>
     <div class="nav-item" onclick="showProfile(this)">
         <div class="nav-avatar">t</div><span class="nav-label">Anda</span>
@@ -283,11 +275,11 @@ HTML_TEMPLATE = """
     let currentQuery = '';
     let currentOffset = 0;
     let isLoadingMore = false;
+    let currentPlayingVideoStr = ''; // Menyimpan data video aktif
     
     window.addEventListener('DOMContentLoaded', () => { loadHome(); });
     
     window.addEventListener('scroll', () => {
-        // Cek jika sedang ada di Beranda/Search
         if (!isLoadingMore && document.getElementById('main').style.display !== 'none') {
             if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 300) {
                 loadMoreData();
@@ -326,7 +318,7 @@ HTML_TEMPLATE = """
         e.preventDefault(); 
         const q = document.getElementById(source === 'desktop' ? 'keyword-desktop' : 'keyword-mobile').value.trim();
         if (q) { 
-            activateNav(document.querySelector('.nav-item')); // Switch tab to home icon
+            activateNav(document.querySelector('.nav-item')); 
             currentQuery = q; currentOffset = 0; 
             if(source === 'mobile') toggleMobileSearch(false); 
             showSkeletons();
@@ -340,22 +332,20 @@ HTML_TEMPLATE = """
         else loadHome();
     }
 
-    // Logic untuk mengatur tampilan saat tab diklik
     function activateNav(el) {
         if(!el) return;
         document.querySelectorAll('.nav-item, .sidebar-item').forEach(n => n.classList.remove('active'));
         el.classList.add('active');
         
-        // Tampilkan main content, sembunyikan player dan profil
         document.getElementById('main').style.display = 'block';
         document.getElementById('player-section').style.display = 'none';
         document.getElementById('profile-section').style.display = 'none';
-        document.getElementById('player-box').innerHTML = ''; // Hentikan video berjalan
+        document.getElementById('player-box').innerHTML = ''; 
     }
 
     function goHome(e, el) { 
         if (e) e.preventDefault(); 
-        activateNav(el || document.querySelector('.nav-item')); // Aktifkan ikon beranda
+        activateNav(el || document.querySelector('.nav-item')); 
         document.getElementById('chips-container').style.display = 'block';
         loadHome(); 
     }
@@ -369,37 +359,57 @@ HTML_TEMPLATE = """
     }
 
     function showProfile(el) {
+        if(!el) return;
         activateNav(el);
-        // Sembunyikan main (beranda), tampilkan profil
         document.getElementById('main').style.display = 'none';
         document.getElementById('profile-section').style.display = 'block';
         
         const hist = JSON.parse(localStorage.getItem('yt_history') || '[]');
-        const container = document.getElementById('history-scroll');
-        if(hist.length === 0) { 
-            container.innerHTML = '<div style="color:#aaa; font-size:13px; padding-left:16px;">Belum ada histori tontonan.</div>'; 
-            return; 
-        }
+        const wl = JSON.parse(localStorage.getItem('yt_watch_later') || '[]');
         
-        container.innerHTML = hist.slice(0,10).map(v => {
-            const vStr = encodeURIComponent(JSON.stringify(v));
-            return `<div class="hist-card" onclick="playVideo('${vStr}')">
-                <img src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" class="hist-thumb">
-                <div class="hist-title">${v.title}</div>
-                <div class="hist-channel">${v.channel}</div>
-            </div>`;
-        }).join('');
+        const renderList = (list) => {
+            if(list.length === 0) return '<div style="color:#aaa; font-size:13px; padding-left:16px;">Belum ada video.</div>';
+            return list.slice(0,10).map(v => {
+                const vStr = encodeURIComponent(JSON.stringify(v));
+                return `<div class="hist-card" onclick="playVideo('${vStr}')">
+                    <img src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" class="hist-thumb">
+                    <div class="hist-title">${v.title}</div>
+                    <div class="hist-channel">${v.channel}</div>
+                </div>`;
+            }).join('');
+        };
+
+        document.getElementById('history-scroll').innerHTML = renderList(hist);
+        document.getElementById('watch-later-scroll').innerHTML = renderList(wl);
+    }
+
+    function saveTontonNanti() {
+        if(!currentPlayingVideoStr) return;
+        try {
+            let v = JSON.parse(decodeURIComponent(currentPlayingVideoStr));
+            let wl = JSON.parse(localStorage.getItem('yt_watch_later') || '[]');
+            
+            // Cek jika sudah ada
+            if(!wl.find(x => x.id === v.id)) {
+                wl.unshift(v);
+                localStorage.setItem('yt_watch_later', JSON.stringify(wl));
+                alert('Berhasil disimpan ke Tonton Nanti!');
+            } else {
+                alert('Video sudah ada di Tonton Nanti.');
+            }
+        } catch(e){}
     }
 
     function playVideo(videoStr) {
         let v; try { v = JSON.parse(decodeURIComponent(videoStr)); } catch(e){ return; }
+        
+        currentPlayingVideoStr = videoStr; // Menyimpan status video saat ini
         
         // Save to History
         let hist = JSON.parse(localStorage.getItem('yt_history') || '[]');
         hist = hist.filter(x => x.id !== v.id); hist.unshift(v);
         if(hist.length > 50) hist.pop(); localStorage.setItem('yt_history', JSON.stringify(hist));
 
-        // Hide other pages, show Player
         document.getElementById('main').style.display = 'none';
         document.getElementById('profile-section').style.display = 'none';
         const ps = document.getElementById('player-section');
