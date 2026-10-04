@@ -79,6 +79,10 @@ HTML_TEMPLATE = """
         .player-container { width: 100%; aspect-ratio: 16/9; background: #000; position: sticky; top: 0; z-index: 105; }
         .player-container iframe { width: 100%; height: 100%; border: none; }
         
+        /* Tombol Pengaturan Melayang di Atas Video */
+        .floating-settings-btn { position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.5); color: #fff; border: none; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 110; }
+        .floating-settings-btn .material-icons-outlined { font-size: 20px; }
+
         .player-meta { padding: 12px 16px; }
         .player-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; line-height: 1.3; }
         .player-views-date { font-size: 13px; color: #aaa; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
@@ -172,7 +176,11 @@ HTML_TEMPLATE = """
 </main>
 
 <div id="player-section">
-    <div class="player-container" id="player-box"></div>
+    <div class="player-container" id="player-box">
+        <!-- Tombol Pengaturan Melayang di Atas Video -->
+        <button class="floating-settings-btn" onclick="openSettings()"><span class="material-icons-outlined">settings</span></button>
+    </div>
+    
     <div class="player-meta fade-in">
         <div class="player-title" id="player-title">Judul Video</div>
         <div class="player-views-date">
@@ -181,9 +189,8 @@ HTML_TEMPLATE = """
         </div>
         
         <div class="action-row">
-            <!-- Tambahan Tombol Pengaturan -->
-            <div class="action-pill" onclick="openSettings()"><span class="material-icons-outlined">settings</span> Pengaturan</div>
             <div class="action-pill"><span class="material-icons-outlined">share</span> Bagikan</div>
+            <div class="action-pill"><span class="material-icons-outlined">download</span> Unduh</div>
             <div class="action-pill" onclick="saveTontonNanti()"><span class="material-icons-outlined">playlist_add</span> Simpan</div>
             <div class="action-pill"><span class="material-icons-outlined">headphones</span> Audio</div>
         </div>
@@ -409,7 +416,7 @@ HTML_TEMPLATE = """
         const iframe = document.querySelector('#player-box iframe');
         if(iframe) {
             let src = iframe.src;
-            src = src.split('&vq=')[0]; // Hapus parameter kualitas lama jika ada
+            src = src.split('&vq=')[0];
             iframe.src = src + '&vq=' + res;
         }
         closeSettings();
@@ -429,7 +436,11 @@ HTML_TEMPLATE = """
         document.getElementById('player-channel-avatar').src = v.avatar || '';
         document.getElementById('player-views').textContent = (v.views || '123 rb tampilan') + ' • ' + (v.published || 'Baru saja');
         
-        document.getElementById('player-box').innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0&fs=0" allow="autoplay"></iframe>`;
+        // Memakai pemutar standar YouTube dengan tombol fullscreen bawaan
+        document.getElementById('player-box').innerHTML = `
+            <button class="floating-settings-btn" onclick="openSettings()"><span class="material-icons-outlined">settings</span></button>
+            <iframe src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0" allow="autoplay;fullscreen"></iframe>
+        `;
         
         let related = [...activeData].sort(() => 0.5 - Math.random()).slice(0, 5);
         document.getElementById('related-grid').innerHTML = '';
@@ -451,7 +462,7 @@ HTML_TEMPLATE = """
     function closeMiniPlayer() {
         currentPlayingVideoStr = '';
         document.getElementById('mini-player').classList.remove('active');
-        document.getElementById('player-box').innerHTML = '';
+        document.getElementById('player-box').innerHTML = `<button class="floating-settings-btn" onclick="openSettings()"><span class="material-icons-outlined">settings</span></button>`;
     }
 
     function showSkeletons() { 
