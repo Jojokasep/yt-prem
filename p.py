@@ -3,7 +3,6 @@ import scrapetube
 import random
 import urllib.request
 import json
-import time
 
 app = Flask(__name__)
 
@@ -312,7 +311,7 @@ HTML_TEMPLATE = """
         <div class="mini-channel" id="mini-channel">Channel</div>
     </div>
     <div class="mini-actions">
-        <span class="material-icons" onclick="expandPlayer()">play_arrow</span>
+        <span class="material-icons" id="mini-play-icon" onclick="toggleMiniPlay(event)">pause</span>
         <span class="material-icons" onclick="closeMiniPlayer()">close</span>
     </div>
 </div>
@@ -348,6 +347,7 @@ HTML_TEMPLATE = """
     let activeData = [];
     let debounceTimer = null;
     let isSubscribed = false;
+    let isMiniPlaying = true;
 
     window.addEventListener('DOMContentLoaded', () => { 
         loadHome(); 
@@ -448,7 +448,6 @@ HTML_TEMPLATE = """
         }
     }
 
-    // Debounce Search Suggestions
     function debounceFetchSuggestions(keyword) {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
@@ -536,7 +535,6 @@ HTML_TEMPLATE = """
         if(currentQuery !== '') loadHome(); 
     }
     
-    // Tampilan Khusus Shorts (Vertical 9:16 Feed)
     function loadShorts(el) {
         activateNav(el);
         document.getElementById('chips-container').style.display = 'none';
@@ -698,6 +696,8 @@ HTML_TEMPLATE = """
     function playVideo(videoStr) {
         let v; try { v = JSON.parse(decodeURIComponent(videoStr)); } catch(e){ return; }
         currentPlayingVideoStr = videoStr; 
+        isMiniPlaying = true;
+        
         document.getElementById('main').style.display = 'none';
         document.getElementById('mini-player').classList.remove('active');
         document.getElementById('player-container-box').classList.remove('css-fullscreen');
@@ -712,7 +712,7 @@ HTML_TEMPLATE = """
         document.getElementById('player-channel-avatar').src = v.avatar || '';
         document.getElementById('player-views').textContent = (v.views || '123 rb tampilan') + ' • ' + (v.published || 'Baru saja');
         
-        document.getElementById('player-box').innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0&fs=0&iv_load_policy=3&modestbranding=1" allow="autoplay"></iframe>`;
+        document.getElementById('player-box').innerHTML = `<iframe id="yt-iframe" src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0&fs=0&iv_load_policy=3&modestbranding=1" allow="autoplay"></iframe>`;
         
         let related = [...activeData].sort(() => 0.5 - Math.random()).slice(0, 5);
         document.getElementById('related-grid').innerHTML = '';
@@ -721,8 +721,33 @@ HTML_TEMPLATE = """
         document.getElementById('mini-thumb-img').src = `https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`;
         document.getElementById('mini-title').textContent = v.title;
         document.getElementById('mini-channel').textContent = v.channel;
+        document.getElementById('mini-play-icon').textContent = 'pause';
 
         ps.style.display = 'block'; window.scrollTo(0,0);
+    }
+
+    function toggleMiniPlay(e) {
+        e.stopPropagation();
+        const icon = document.getElementById('mini-play-icon');
+        const iframe = document.querySelector('#player-box iframe');
+        
+        if (isMiniPlaying) {
+            isMiniPlaying = false;
+            icon.textContent = 'play_arrow';
+            if(iframe) {
+                let currentSrc = iframe.src.replace('autoplay=1', 'autoplay=0');
+                iframe.src = currentSrc;
+            }
+            showToast('Video dijeda');
+        } else {
+            isMiniPlaying = true;
+            icon.textContent = 'pause';
+            if(iframe) {
+                let currentSrc = iframe.src.replace('autoplay=0', 'autoplay=1');
+                iframe.src = currentSrc;
+            }
+            showToast('Video dilanjutkan');
+        }
     }
 
     function minimizePlayerToMini() {
