@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, render_template_string, request
 import scrapetube
+import re
 
 app = Flask(__name__)
 
@@ -11,7 +12,7 @@ HTML_TEMPLATE = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>YouTube Clone</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
@@ -25,7 +26,7 @@ HTML_TEMPLATE = """
 
         /* ===== SPLASH ===== */
         #splash { position: fixed; inset: 0; background: #0f0f0f; display: flex; align-items: center; justify-content: center; z-index: 9999; transition: opacity 0.5s, visibility 0.5s; }
-        #splash.hide { opacity: 0; visibility: hidden; }
+        #splash.hide { opacity: 0; visibility: hidden; pointer-events: none; }
         .splash-logo { width: 80px; animation: spPulse 1.5s ease-in-out infinite; }
         @keyframes spPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
 
@@ -38,25 +39,31 @@ HTML_TEMPLATE = """
         .yt-logo-text { font-size: 19px; font-weight: 700; letter-spacing: -1px; margin-left: 2px; }
         .yt-logo .country { font-size: 10px; color: #aaa; font-weight: 500; margin-top: -10px; margin-left: 2px;}
         
-        .header-center { flex: 1; display: flex; align-items: center; justify-content: center; max-width: 720px; margin: 0 auto; }
+        .header-center { flex: 1; display: flex; align-items: center; justify-content: center; max-width: 720px; margin: 0 auto; position: relative; }
         .search-form { display: flex; flex: 1; align-items: center; }
         .search-input-wrap { flex: 1; position: relative; display: flex; align-items: center; }
         .search-input-wrap input { width: 100%; height: 40px; padding: 0 16px; font-size: 16px; border: 1px solid #303030; border-right: none; border-radius: 20px 0 0 20px; background: #121212; color: #fff; outline: none; }
-        .search-input-wrap input:focus { border-color: #1c62b9; margin-left: -1px; padding-left: 17px; }
+        .search-input-wrap input:focus { border-color: #1c62b9; }
         .search-btn { height: 40px; width: 64px; border: 1px solid #303030; border-radius: 0 20px 20px 0; background: #222222; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
         .search-btn:hover { background: #303030; }
         .mic-btn { width: 40px; height: 40px; border: none; border-radius: 50%; background: #181818; color: #fff; cursor: pointer; margin-left: 12px; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
         
+        /* Suggestion Dropdown */
+        .suggestion-box { position: absolute; top: 44px; left: 0; right: 64px; background: #212121; border-radius: 0 0 12px 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); overflow: hidden; z-index: 200; display: none; border: 1px solid #303030; border-top: none;}
+        .suggestion-box.show { display: block; }
+        .suggestion-item { padding: 8px 16px; cursor: pointer; display: flex; align-items: center; gap: 16px; font-size: 14px; }
+        .suggestion-item:hover { background: rgba(255,255,255,0.1); }
+        .suggestion-item .material-icons-outlined { font-size: 20px; color: #aaa; }
+
         .header-right { display: flex; align-items: center; gap: 8px; min-width: 200px; justify-content: flex-end; }
         .header-icon { width: 40px; height: 40px; border: none; border-radius: 50%; background: transparent; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; position: relative; }
         .header-icon:hover { background: rgba(255,255,255,0.1); }
-        .header-icon .notif-dot { position: absolute; top: 10px; right: 10px; width: 8px; height: 8px; background: #cc0000; border-radius: 50%; border: 2px solid #0f0f0f; }
         .avatar-btn { width: 32px; height: 32px; border-radius: 50%; background: #ff4e45; color: #fff; border: none; cursor: pointer; font-size: 14px; font-weight: 500; display: flex; align-items: center; justify-content: center; margin-left: 8px; }
 
         /* ===== SIDEBAR ===== */
         #sidebar { position: fixed; top: 56px; left: 0; width: 240px; height: calc(100vh - 56px); background: #0f0f0f; overflow-y: auto; overflow-x: hidden; padding: 12px 0; z-index: 90; transition: transform 0.2s ease, width 0.2s ease; }
         #sidebar.collapsed { width: 72px; }
-        #sidebar.collapsed .sidebar-label { font-size: 10px; display: block; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+        #sidebar.collapsed .sidebar-label { font-size: 10px; display: block; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; text-align: center; }
         #sidebar.collapsed .sidebar-item { flex-direction: column; padding: 16px 0; gap: 0; justify-content: center; border-radius: 10px; margin: 0 4px; height: auto; }
         #sidebar.collapsed .sidebar-item .material-icons-outlined, #sidebar.collapsed .sidebar-item .material-icons { font-size: 24px; margin: 0; }
         
@@ -72,19 +79,18 @@ HTML_TEMPLATE = """
         #sidebar.collapsed .sidebar-heading, #sidebar.collapsed .sidebar-divider, #sidebar.collapsed .hide-on-collapse { display: none; }
 
         /* ===== BOTTOM NAV (MOBILE) ===== */
-        #bottom-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: 48px; background: rgba(15,15,15,0.98); border-top: 1px solid rgba(255,255,255,0.1); z-index: 100; justify-content: space-around; align-items: center; padding-bottom: env(safe-area-inset-bottom); }
+        #bottom-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: 48px; background: rgba(15,15,15,0.98); border-top: 1px solid rgba(255,255,255,0.1); z-index: 100; justify-content: space-around; align-items: center; }
         .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; cursor: pointer; width: 100%; padding: 4px 0; height: 100%; transition: background 0.2s; }
         .nav-item .material-icons-outlined, .nav-item .material-icons { font-size: 24px; }
         .nav-item .nav-label { font-size: 10px; margin-top: 2px; }
         .nav-item.active .material-icons-outlined { display: none; }
         .nav-item:not(.active) .material-icons { display: none; }
-        .nav-item:hover { background: rgba(255,255,255,0.05); }
 
         /* ===== MAIN CONTENT ===== */
-        #main { margin-left: 240px; margin-top: 56px; padding: 0 24px 40px; transition: margin-left 0.2s ease; }
+        #main { margin-left: 240px; margin-top: 56px; padding: 0 24px 40px; transition: margin-left 0.2s ease; min-height: calc(100vh - 56px); }
         #main.expanded { margin-left: 72px; }
 
-        .chips-wrapper { position: sticky; top: 56px; background: rgba(15,15,15,0.98); z-index: 10; padding: 12px 0; border-bottom: 1px solid transparent; }
+        .chips-wrapper { position: sticky; top: 56px; background: rgba(15,15,15,0.98); z-index: 10; padding: 12px 0; }
         .chips-bar { display: flex; gap: 12px; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
         .chips-bar::-webkit-scrollbar { display: none; }
         .chip { padding: 8px 12px; border-radius: 8px; font-size: 14px; font-weight: 500; white-space: nowrap; cursor: pointer; border: none; background: rgba(255,255,255,0.1); color: #f1f1f1; transition: background 0.2s; }
@@ -99,56 +105,21 @@ HTML_TEMPLATE = """
         .player-container iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; }
         
         #player-section.mini-player {
-            position: fixed !important;
-            bottom: 24px;
-            right: 24px;
-            width: 340px !important;
-            max-width: calc(100vw - 32px);
-            margin: 0 !important;
-            z-index: 9999;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.7);
-            border-radius: 10px;
-            background: #181818;
-            padding: 0;
-            animation: slideUp 0.3s ease-out;
-            border: 1px solid rgba(255,255,255,0.15);
+            position: fixed !important; bottom: 24px; right: 24px; width: 380px !important; max-width: calc(100vw - 32px);
+            margin: 0 !important; z-index: 9999; box-shadow: 0 8px 24px rgba(0,0,0,0.7); border-radius: 12px;
+            background: #181818; padding: 0; animation: slideUp 0.3s ease-out; border: 1px solid rgba(255,255,255,0.15);
         }
-        #player-section.mini-player .player-container { border-radius: 10px; }
-        #player-section.mini-player .player-meta { display: none; }
+        #player-section.mini-player .player-container { border-radius: 12px 12px 0 0; }
+        #player-section.mini-player .player-meta { display: flex; padding: 8px 12px; align-items: center; justify-content: space-between; }
+        #player-section.mini-player .player-title { font-size: 14px; margin: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #player-section.mini-player .player-actions, #player-section.mini-player .player-description-box, #player-section.mini-player #player-channel-link { display: none !important; }
         
-        .mini-controls {
-            display: none;
-            position: absolute;
-            top: 4px;
-            right: 4px;
-            z-index: 10000;
-            gap: 4px;
-            background: rgba(0,0,0,0.6);
-            padding: 2px;
-            border-radius: 6px;
-        }
+        .mini-controls { display: none; position: absolute; top: 4px; right: 4px; z-index: 10000; gap: 4px; background: rgba(0,0,0,0.6); padding: 2px; border-radius: 6px; }
         #player-section.mini-player .mini-controls { display: flex; }
-        .mini-btn {
-            background: none;
-            border: none;
-            color: #fff;
-            cursor: pointer;
-            width: 28px;
-            height: 28px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 4px;
-            transition: background 0.2s;
-        }
-        .mini-btn:hover { background: rgba(255,255,255,0.2); }
+        .mini-btn { background: none; border: none; color: #fff; cursor: pointer; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 4px; }
         .mini-btn .material-icons-outlined { font-size: 18px; }
 
-        @keyframes slideUp {
-            from { transform: translateY(100px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
+        @keyframes slideUp { from { transform: translateY(100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         #player-section.theatre { max-width: 100%; margin: 0 -24px 24px -24px; }
         #player-section.theatre .player-container { border-radius: 0; max-height: 70vh; padding-bottom: 0; height: 70vh; }
         #player-section.theatre .player-meta { padding: 16px 24px 0; max-width: 1280px; margin: 0 auto; }
@@ -156,31 +127,31 @@ HTML_TEMPLATE = """
         .player-meta { padding: 16px 0 0; }
         .player-title { font-size: 20px; font-weight: 700; line-height: 1.4; margin-bottom: 12px; }
         .player-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: space-between; }
-        .player-actions-left { display: flex; gap: 8px; align-items: center; }
-        .player-actions-right { display: flex; gap: 8px; }
+        .player-actions-left { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .player-actions-right { display: flex; gap: 8px; flex-wrap: wrap; }
         .action-btn { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 20px; background: rgba(255,255,255,0.1); border: none; color: #f1f1f1; cursor: pointer; font-size: 14px; font-weight: 500; transition: background 0.2s; }
         .action-btn:hover { background: rgba(255,255,255,0.2); }
         
-        .player-description-box { background: rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; margin-top: 16px; font-size: 14px; line-height: 1.5; white-space: pre-wrap; transition: background 0.2s; }
-        .player-description-box:hover { background: rgba(255,255,255,0.15); }
+        .player-description-box { background: rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; margin-top: 16px; font-size: 14px; line-height: 1.5; white-space: pre-wrap; cursor: pointer; }
         .desc-views-date { font-weight: 700; margin-bottom: 6px; }
 
         /* ===== VIDEO GRID ===== */
-        .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 40px 16px; padding-top: 24px; }
+        .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 40px 16px; padding-top: 24px; }
         .page-title { grid-column: 1 / -1; margin-bottom: -16px; font-size: 24px; font-weight: 700; display: flex; align-items: center; gap: 12px; }
         
         .vid-card { cursor: pointer; display: flex; flex-direction: column; gap: 12px; }
-        .thumb-wrap { position: relative; width: 100%; aspect-ratio: 16/9; border-radius: 12px; overflow: hidden; background: #272727; transition: border-radius 0.2s; }
+        .thumb-wrap { position: relative; width: 100%; aspect-ratio: 16/9; border-radius: 12px; overflow: hidden; background: #272727; }
         .vid-card:hover .thumb-wrap { border-radius: 0px; }
-        .thumb-img { width: 100%; height: 100%; object-fit: cover; }
+        .thumb-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
+        .vid-card:hover .thumb-img { transform: scale(1.05); }
         .duration-badge { position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.8); color: #fff; font-size: 12px; font-weight: 500; padding: 3px 4px; border-radius: 4px; }
         
         .vid-info { display: flex; gap: 12px; align-items: flex-start; }
-        .channel-avatar { width: 36px; height: 36px; border-radius: 50%; background: #444; flex-shrink: 0; overflow: hidden; display: block; text-decoration: none; color: inherit; }
+        .channel-avatar { width: 36px; height: 36px; border-radius: 50%; background: #444; flex-shrink: 0; overflow: hidden; }
         .channel-avatar img { width: 100%; height: 100%; object-fit: cover; }
         .vid-text { flex: 1; min-width: 0; }
         .vid-title { font-size: 16px; font-weight: 500; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 4px; color: #f1f1f1; }
-        .vid-channel { font-size: 14px; color: #aaa; line-height: 1.4; margin-bottom: 2px; text-decoration: none; display: inline-block; }
+        .vid-channel { font-size: 14px; color: #aaa; line-height: 1.4; margin-bottom: 2px; display: inline-block; }
         .vid-channel:hover { color: #fff; }
         .vid-meta { font-size: 14px; color: #aaa; line-height: 1.4; }
 
@@ -192,13 +163,22 @@ HTML_TEMPLATE = """
         .skel-lines { flex: 1; display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
         .skel-line { height: 14px; border-radius: 4px; background: #272727; animation: pulse 1.5s infinite ease-in-out; }
         .skel-line.short { width: 80%; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
 
         .empty-state { text-align: center; padding: 60px 20px; color: #aaa; grid-column: 1 / -1; }
         .empty-state .material-icons-outlined { font-size: 64px; margin-bottom: 12px; opacity: 0.5; }
 
-        #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: rgba(255,255,255,0.9); color: #0f0f0f; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 500; z-index: 999; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; }
+        /* Infinite Scroll Loader */
+        #scroll-loader { display: none; justify-content: center; padding: 24px 0; width: 100%; grid-column: 1 / -1; }
+        #scroll-loader.show { display: flex; }
+        .spinner { width: 32px; height: 32px; border: 3px solid rgba(255,255,255,0.1); border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: #f1f1f1; color: #0f0f0f; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 500; z-index: 9999; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; }
         #toast.show { transform: translateX(-50%) translateY(0); }
+
+        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 85; opacity: 0; transition: opacity 0.3s; }
+        .overlay.show { display: block; opacity: 1; }
 
         @media(max-width: 792px) {
             #sidebar { transform: translateX(-100%); width: 240px; }
@@ -212,11 +192,9 @@ HTML_TEMPLATE = """
             .mic-btn { display: none; }
             .video-grid { grid-template-columns: 1fr; gap: 24px; }
             #player-section.theatre .player-container { height: 35vh; }
-            #player-section.mini-player { bottom: 60px; right: 12px; width: 200px !important; }
+            #player-section.mini-player { bottom: 60px; right: 12px; width: 240px !important; }
+            .suggestion-box { right: 0; }
         }
-        
-        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 85; opacity: 0; transition: opacity 0.3s; }
-        .overlay.show { display: block; opacity: 1; }
     </style>
 </head>
 <body>
@@ -248,7 +226,8 @@ HTML_TEMPLATE = """
     <div class="header-center">
         <form class="search-form" onsubmit="searchVideos(event)">
             <div class="search-input-wrap">
-                <input type="text" id="keyword" placeholder="Telusuri" autocomplete="off">
+                <input type="text" id="keyword" placeholder="Telusuri" autocomplete="off" oninput="fetchSuggestions()" onfocus="fetchSuggestions()">
+                <div class="suggestion-box" id="suggestion-box"></div>
             </div>
             <button type="submit" class="search-btn" title="Telusuri">
                 <span class="material-icons-outlined" style="font-size:24px">search</span>
@@ -265,7 +244,6 @@ HTML_TEMPLATE = """
         </button>
         <button class="header-icon" title="Notifikasi">
             <span class="material-icons-outlined">notifications</span>
-            <span class="notif-dot"></span>
         </button>
         <button class="avatar-btn">U</button>
     </div>
@@ -282,33 +260,25 @@ HTML_TEMPLATE = """
         <span class="icon-wrapper material-icons">play_circle</span>
         <span class="sidebar-label">Shorts</span>
     </div>
-    <div class="sidebar-item" onclick="showToast('Subscription'); setBottomNavActive('bnav-subs')">
+    <div class="sidebar-item" onclick="showToast('Subscription')">
         <span class="icon-wrapper material-icons-outlined">subscriptions</span>
         <span class="icon-wrapper material-icons">subscriptions</span>
         <span class="sidebar-label">Subscription</span>
     </div>
-    
     <div class="sidebar-divider"></div>
     <div class="sidebar-heading hide-on-collapse">Anda ></div>
-    
     <div class="sidebar-item" onclick="showHistory(this)">
         <span class="icon-wrapper material-icons-outlined">history</span>
         <span class="icon-wrapper material-icons">history</span>
         <span class="sidebar-label">Riwayat</span>
-    </div>
-    <div class="sidebar-item" onclick="showToast('Video Anda')">
-        <span class="icon-wrapper material-icons-outlined">smart_display</span>
-        <span class="sidebar-label">Video Anda</span>
     </div>
     <div class="sidebar-item" onclick="showWatchLater(this)">
         <span class="icon-wrapper material-icons-outlined">schedule</span>
         <span class="icon-wrapper material-icons">schedule</span>
         <span class="sidebar-label">Tonton nanti</span>
     </div>
-    
     <div class="sidebar-divider"></div>
     <div class="sidebar-heading hide-on-collapse">Eksplorasi</div>
-    
     <div class="sidebar-item" onclick="searchChip('Trending', this)">
         <span class="icon-wrapper material-icons-outlined">local_fire_department</span>
         <span class="sidebar-label">Trending</span>
@@ -320,10 +290,6 @@ HTML_TEMPLATE = """
     <div class="sidebar-item" onclick="searchChip('Gaming', this)">
         <span class="icon-wrapper material-icons-outlined">sports_esports</span>
         <span class="sidebar-label">Gaming</span>
-    </div>
-    <div class="sidebar-item" onclick="searchChip('Berita', this)">
-        <span class="icon-wrapper material-icons-outlined">newspaper</span>
-        <span class="sidebar-label">Berita</span>
     </div>
 </nav>
 
@@ -339,103 +305,69 @@ HTML_TEMPLATE = """
             <button class="chip" onclick="chipClick(this,'Mixes')">Mix</button>
             <button class="chip" onclick="chipClick(this,'Stand up Comedy')">Komedi</button>
             <button class="chip" onclick="chipClick(this,'Teknologi')">Teknologi</button>
-            <button class="chip" onclick="chipClick(this,'Baru diupload')">Baru diupload</button>
+            <button class="chip" onclick="chipClick(this,'Baru diupload')">Baru</button>
         </div>
     </div>
 
-    <!-- PLAYER SECTION -->
     <div id="player-section">
         <div class="player-container" id="player-box">
             <div class="mini-controls">
-                <button class="mini-btn" onclick="toggleMiniPlayer()" title="Perbesar">
-                    <span class="material-icons-outlined">open_in_full</span>
-                </button>
-                <button class="mini-btn" onclick="hidePlayer()" title="Tutup">
-                    <span class="material-icons-outlined">close</span>
-                </button>
+                <button class="mini-btn" onclick="toggleMiniPlayer()" title="Perbesar"><span class="material-icons-outlined">open_in_full</span></button>
+                <button class="mini-btn" onclick="hidePlayer()" title="Tutup"><span class="material-icons-outlined">close</span></button>
             </div>
         </div>
         <div class="player-meta">
             <div class="player-title" id="player-title"></div>
             <div class="player-actions">
                 <div class="player-actions-left">
-                    <a id="player-channel-link" href="#" target="_blank" style="display:flex; align-items:center; gap:12px; margin-right:12px; text-decoration:none;">
+                    <a id="player-channel-link" href="#" target="_blank" style="display:flex; align-items:center; gap:12px; text-decoration:none;">
                         <img id="player-channel-avatar" src="" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">
                         <div style="display:flex; flex-direction:column;">
                             <span id="player-channel-name" style="font-weight:600; font-size:16px; color:#fff;"></span>
                             <span style="font-size:12px; color:#aaa;">Subscribe</span>
                         </div>
                     </a>
-                    <button class="action-btn" style="background:#f1f1f1;color:#0f0f0f;border-radius:20px;font-weight:600;">
-                        Subscribe
-                    </button>
-                    <div style="display:flex;background:rgba(255,255,255,0.1);border-radius:20px;overflow:hidden;margin-left:8px;">
-                        <button class="action-btn" style="border-radius:0;background:transparent" onclick="showToast('Suka ditambahkan')">
-                            <span class="material-icons-outlined" style="font-size:20px">thumb_up</span>
-                        </button>
+                    <button class="action-btn" style="background:#f1f1f1;color:#0f0f0f;border-radius:20px;font-weight:600;">Subscribe</button>
+                    <div style="display:flex;background:rgba(255,255,255,0.1);border-radius:20px;overflow:hidden;">
+                        <button class="action-btn" style="border-radius:0;background:transparent" onclick="showToast('Suka ditambahkan')"><span class="material-icons-outlined" style="font-size:20px">thumb_up</span></button>
                         <div style="width:1px;background:rgba(255,255,255,0.2);margin:8px 0"></div>
-                        <button class="action-btn" style="border-radius:0;background:transparent" onclick="showToast('Tidak suka')">
-                            <span class="material-icons-outlined" style="font-size:20px">thumb_down</span>
-                        </button>
+                        <button class="action-btn" style="border-radius:0;background:transparent" onclick="showToast('Tidak suka')"><span class="material-icons-outlined" style="font-size:20px">thumb_down</span></button>
                     </div>
                 </div>
                 <div class="player-actions-right">
-                    <button class="action-btn" onclick="toggleMiniPlayer()" title="Mini Player">
-                        <span class="material-icons-outlined" style="font-size:20px">picture_in_picture_alt</span> Mini
-                    </button>
-                    <button class="action-btn" onclick="toggleBackgroundPiP()" title="Putar di Latar Belakang (PiP Browser)">
-                        <span class="material-icons-outlined" style="font-size:20px">open_in_new</span> Latar Belakang
-                    </button>
-                    <button class="action-btn" onclick="showToast('Tautan disalin!')">
-                        <span class="material-icons-outlined" style="font-size:20px">reply</span> Bagikan
-                    </button>
-                    <button class="action-btn" onclick="addToWatchLater()">
-                        <span class="material-icons-outlined" style="font-size:20px">playlist_add</span> Simpan
-                    </button>
-                    <button class="action-btn" onclick="toggleTheatre()">
-                        <span class="material-icons-outlined" style="font-size:20px" id="theatre-icon">crop_16_9</span>
-                    </button>
-                    <button class="action-btn" onclick="hidePlayer()">
-                        <span class="material-icons-outlined" style="font-size:20px">close</span>
-                    </button>
+                    <button class="action-btn" onclick="toggleMiniPlayer()"><span class="material-icons-outlined" style="font-size:20px">picture_in_picture_alt</span> Mini</button>
+                    <button class="action-btn" onclick="showToast('Tautan disalin!')"><span class="material-icons-outlined" style="font-size:20px">reply</span> Bagikan</button>
+                    <button class="action-btn" onclick="addToWatchLater()"><span class="material-icons-outlined" style="font-size:20px">playlist_add</span> Simpan</button>
+                    <button class="action-btn" onclick="toggleTheatre()"><span class="material-icons-outlined" style="font-size:20px" id="theatre-icon">crop_16_9</span></button>
+                    <button class="action-btn" onclick="hidePlayer()"><span class="material-icons-outlined" style="font-size:20px">close</span></button>
                 </div>
             </div>
-            
-            <div class="player-description-box">
+            <div class="player-description-box" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'120px':'none'">
                 <div class="desc-views-date" id="player-views-date"></div>
-                <div id="player-description"></div>
+                <div id="player-description" style="max-height:120px;overflow:hidden;"></div>
             </div>
-            
         </div>
     </div>
 
     <div class="video-grid" id="video-grid"></div>
+    <div id="scroll-loader"><div class="spinner"></div></div>
 </main>
 
-<!-- BOTTOM NAVIGATION MOBILE -->
 <nav id="bottom-nav">
     <div class="nav-item active" id="bnav-home" onclick="goHome(event)">
-        <span class="material-icons-outlined">home</span>
-        <span class="material-icons">home</span>
-        <span class="nav-label">Beranda</span>
+        <span class="material-icons-outlined">home</span><span class="material-icons">home</span><span class="nav-label">Beranda</span>
     </div>
     <div class="nav-item" id="bnav-shorts" onclick="loadShorts()">
-        <span class="material-icons-outlined">play_circle</span>
-        <span class="material-icons">play_circle</span>
-        <span class="nav-label">Shorts</span>
+        <span class="material-icons-outlined">play_circle</span><span class="material-icons">play_circle</span><span class="nav-label">Shorts</span>
     </div>
     <div class="nav-item" onclick="showToast('Buat Video')">
         <span class="material-icons-outlined" style="font-size: 36px; font-weight: 200;">add_circle_outline</span>
     </div>
-    <div class="nav-item" id="bnav-subs" onclick="showToast('Subscription'); setBottomNavActive('bnav-subs')">
-        <span class="material-icons-outlined">subscriptions</span>
-        <span class="material-icons">subscriptions</span>
-        <span class="nav-label">Subscription</span>
+    <div class="nav-item" id="bnav-subs" onclick="showToast('Subscription')">
+        <span class="material-icons-outlined">subscriptions</span><span class="material-icons">subscriptions</span><span class="nav-label">Subscription</span>
     </div>
     <div class="nav-item" id="bnav-you" onclick="showHistory(null)">
-        <span class="material-icons-outlined">video_library</span>
-        <span class="material-icons">video_library</span>
-        <span class="nav-label">Anda</span>
+        <span class="material-icons-outlined">video_library</span><span class="material-icons">video_library</span><span class="nav-label">Anda</span>
     </div>
 </nav>
 
@@ -446,17 +378,58 @@ HTML_TEMPLATE = """
     let isTheatreMode = false;
     let isMiniPlayerActive = false;
     let currentPlayingVideo = null;
+    
+    // Infinite Scroll States
+    let currentQuery = '';
+    let currentOffset = 0;
+    let isLoadingMore = false;
+    let hasMoreData = true;
 
     window.addEventListener('DOMContentLoaded', () => {
-        setTimeout(() => document.getElementById('splash').classList.add('hide'), 500);
+        setTimeout(() => document.getElementById('splash').classList.add('hide'), 600);
         loadTrending();
+        window.addEventListener('scroll', handleInfiniteScroll);
+        window.addEventListener('resize', () => {
+            document.getElementById('suggestion-box').classList.remove('show');
+        });
     });
 
-    function setBottomNavActive(id) {
-        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-        if(id) {
-            const activeEl = document.getElementById(id);
-            if(activeEl) activeEl.classList.add('active');
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.header-center')) {
+            document.getElementById('suggestion-box').classList.remove('show');
+        }
+    });
+
+    function handleInfiniteScroll() {
+        if (isLoadingMore || !hasMoreData || !currentQuery) return;
+        const scrollY = window.scrollY || window.pageYOffset;
+        const windowH = window.innerHeight;
+        const docH = document.documentElement.scrollHeight;
+        
+        if (scrollY + windowH >= docH - 500) {
+            loadMoreData();
+        }
+    }
+
+    async function loadMoreData() {
+        isLoadingMore = true;
+        document.getElementById('scroll-loader').classList.add('show');
+        
+        try {
+            const res = await fetch(`/api/search?q=${encodeURIComponent(currentQuery)}&offset=${currentOffset}`);
+            const data = await res.json();
+            
+            if (data.length === 0) {
+                hasMoreData = false;
+            } else {
+                currentOffset += data.length;
+                appendToGrid(data);
+            }
+        } catch (e) {
+            console.error("Error loading more data", e);
+        } finally {
+            isLoadingMore = false;
+            document.getElementById('scroll-loader').classList.remove('show');
         }
     }
 
@@ -489,7 +462,10 @@ HTML_TEMPLATE = """
         
         document.querySelectorAll('.chip').forEach((c,i) => c.classList.toggle('active', i === 0));
         document.querySelectorAll('.sidebar-item').forEach((el, i) => el.classList.toggle('active', i === 0));
-        setBottomNavActive('bnav-home');
+        
+        currentQuery = '';
+        currentOffset = 0;
+        hasMoreData = true;
         
         loadTrending();
         if (window.innerWidth <= 792) {
@@ -521,59 +497,40 @@ HTML_TEMPLATE = """
     function showHistory(sidebarEl) {
         document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
         if(sidebarEl) sidebarEl.classList.add('active');
-        setBottomNavActive('bnav-you');
-
         document.getElementById('chips-container').style.display = 'none';
         hidePlayer();
+        currentQuery = ''; 
         let history = JSON.parse(localStorage.getItem('yt_history') || '[]');
         renderGrid(history, false, 'Riwayat Tontonan', 'history');
-        if (window.innerWidth <= 792) {
-            document.getElementById('sidebar').classList.remove('mobile-open');
-            document.getElementById('overlay').classList.remove('show');
-        }
     }
 
     function showWatchLater(sidebarEl) {
         document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
         if(sidebarEl) sidebarEl.classList.add('active');
-        setBottomNavActive('bnav-you');
-
         document.getElementById('chips-container').style.display = 'none';
         hidePlayer();
+        currentQuery = '';
         let wl = JSON.parse(localStorage.getItem('yt_watch_later') || '[]');
         renderGrid(wl, false, 'Tonton Nanti', 'schedule');
-        if (window.innerWidth <= 792) {
-            document.getElementById('sidebar').classList.remove('mobile-open');
-            document.getElementById('overlay').classList.remove('show');
-        }
     }
 
     function loadShorts() {
         document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
-        setBottomNavActive('bnav-shorts');
         document.getElementById('chips-container').style.display = 'none';
         hidePlayer();
         showSkeletons();
+        currentQuery = '__shorts__'; 
 
         fetch('/api/shorts')
             .then(res => res.json())
-            .then(data => {
-                renderGrid(data, true, 'Shorts', 'play_circle');
-            })
+            .then(data => renderGrid(data, true, 'Shorts', 'play_circle'))
             .catch(() => showError('Gagal memuat Shorts.'));
-
-        if (window.innerWidth <= 792) {
-            document.getElementById('sidebar').classList.remove('mobile-open');
-            document.getElementById('overlay').classList.remove('show');
-        }
     }
 
     function chipClick(btn, query) {
         document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
         btn.classList.add('active');
         document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
-        setBottomNavActive('');
-        
         if (query) {
             document.getElementById('keyword').value = query;
             doSearch(query);
@@ -588,13 +545,7 @@ HTML_TEMPLATE = """
         document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
         document.getElementById('chips-container').style.display = 'block';
         document.getElementById('keyword').value = query;
-        setBottomNavActive('');
-
         doSearch(query);
-        if (window.innerWidth <= 792) {
-            document.getElementById('sidebar').classList.remove('mobile-open');
-            document.getElementById('overlay').classList.remove('show');
-        }
     }
 
     function searchVideos(e) {
@@ -603,17 +554,22 @@ HTML_TEMPLATE = """
         if (!q) { goHome(); return; }
         document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
         document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
-        setBottomNavActive('');
-        document.getElementById('chips-container').style.display = 'block';
+        document.getElementById('suggestion-box').classList.remove('show');
         doSearch(q);
     }
 
     async function doSearch(query) {
         hidePlayer();
         showSkeletons();
+        
+        currentQuery = query;
+        currentOffset = 0;
+        hasMoreData = true;
+        
         try {
             const res = await fetch('/api/search?q=' + encodeURIComponent(query));
             const data = await res.json();
+            currentOffset = data.length;
             renderGrid(data, false);
         } catch (e) {
             showError('Gagal memuat hasil pencarian.');
@@ -623,6 +579,7 @@ HTML_TEMPLATE = """
     async function loadTrending() {
         hidePlayer();
         showSkeletons();
+        currentQuery = '';
         try {
             const res = await fetch('/api/trending');
             const data = await res.json();
@@ -630,6 +587,43 @@ HTML_TEMPLATE = """
         } catch (e) {
             showError('Gagal memuat video trending.');
         }
+    }
+
+    // Search Suggestions
+    let suggestTimeout;
+    async function fetchSuggestions() {
+        const input = document.getElementById('keyword');
+        const box = document.getElementById('suggestion-box');
+        const q = input.value.trim();
+        
+        if (!q) { box.classList.remove('show'); return; }
+        
+        clearTimeout(suggestTimeout);
+        suggestTimeout = setTimeout(async () => {
+            try {
+                const res = await fetch('/api/suggest?q=' + encodeURIComponent(q));
+                const suggestions = await res.json();
+                if (suggestions.length > 0) {
+                    box.innerHTML = suggestions.map(s => 
+                        `<div class="suggestion-item" onclick="selectSuggestion('${escHtml(s)}')">
+                            <span class="material-icons-outlined">search</span>
+                            <span>${escHtml(s)}</span>
+                        </div>`
+                    ).join('');
+                    box.classList.add('show');
+                } else {
+                    box.classList.remove('show');
+                }
+            } catch(e) {
+                box.classList.remove('show');
+            }
+        }, 300);
+    }
+
+    function selectSuggestion(val) {
+        document.getElementById('keyword').value = val;
+        document.getElementById('suggestion-box').classList.remove('show');
+        searchVideos(new Event('submit'));
     }
 
     function playVideo(videoStr) {
@@ -641,23 +635,19 @@ HTML_TEMPLATE = """
         saveToHistory(v);
 
         const ps = document.getElementById('player-section');
-        ps.classList.remove('mini-player');
+        ps.classList.remove('mini-player', 'theatre');
         isMiniPlayerActive = false;
+        isTheatreMode = false;
 
         document.getElementById('player-title').textContent = v.title;
         document.getElementById('player-box').innerHTML = 
             '<div class="mini-controls">' +
-                '<button class="mini-btn" onclick="toggleMiniPlayer()" title="Perbesar">' +
-                    '<span class="material-icons-outlined">open_in_full</span>' +
-                '</button>' +
-                '<button class="mini-btn" onclick="hidePlayer()" title="Tutup">' +
-                    '<span class="material-icons-outlined">close</span>' +
-                '</button>' +
+                '<button class="mini-btn" onclick="toggleMiniPlayer()"><span class="material-icons-outlined">open_in_full</span></button>' +
+                '<button class="mini-btn" onclick="hidePlayer()"><span class="material-icons-outlined">close</span></button>' +
             '</div>' +
-            '<iframe id="yt-iframe" src="https://www.youtube-nocookie.com/embed/' + v.id + '?autoplay=1&rel=0&modestbranding=1" allow="autoplay;encrypted-media;picture-in-picture" allowfullscreen></iframe>';
+            '<iframe id="yt-iframe" src="https://www.youtube-nocookie.com/embed/' + v.id + '?autoplay=1&rel=0" allow="autoplay;encrypted-media;picture-in-picture" allowfullscreen></iframe>';
         
-        let cUrl = v.channelUrl ? "https://www.youtube.com" + v.channelUrl : "#";
-        document.getElementById('player-channel-link').href = cUrl;
+        document.getElementById('player-channel-link').href = v.channelUrl ? "https://www.youtube.com" + v.channelUrl : "#";
         document.getElementById('player-channel-avatar').src = v.avatar || '';
         document.getElementById('player-channel-name').textContent = v.channel;
         
@@ -675,25 +665,15 @@ HTML_TEMPLATE = """
         isMiniPlayerActive = !isMiniPlayerActive;
         if(isMiniPlayerActive) {
             ps.classList.add('mini-player');
-            showToast('Pemutar dikecilkan ke pojok layar');
         } else {
             ps.classList.remove('mini-player');
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     }
 
-    async function toggleBackgroundPiP() {
-        try {
-            showToast('Fitur latar belakang aktif (PiP Browser)');
-        } catch (err) {
-            showToast('Gagal mengaktifkan mode latar belakang');
-        }
-    }
-
     function hidePlayer() {
         const ps = document.getElementById('player-section');
-        ps.classList.remove('show');
-        ps.classList.remove('mini-player');
+        ps.classList.remove('show', 'mini-player', 'theatre');
         setTimeout(() => {
             ps.style.display = 'none';
             document.getElementById('player-box').innerHTML = '';
@@ -716,7 +696,7 @@ HTML_TEMPLATE = """
 
     function showSkeletons() {
         const g = document.getElementById('video-grid');
-        g.innerHTML = Array(12).fill(`
+        g.innerHTML = Array(8).fill(`
             <div class="skel-card">
                 <div class="skel-thumb"></div>
                 <div class="skel-info">
@@ -751,12 +731,15 @@ HTML_TEMPLATE = """
             return;
         }
 
-        g.style.gridTemplateColumns = isShortsMode ? "repeat(auto-fill, minmax(180px, 1fr))" : "repeat(auto-fill, minmax(310px, 1fr))";
+        g.style.gridTemplateColumns = isShortsMode ? "repeat(auto-fill, minmax(180px, 1fr))" : "";
+        appendToGrid(data, isShortsMode);
+    }
 
+    function appendToGrid(data, isShortsMode = false) {
+        const g = document.getElementById('video-grid');
         data.forEach(v => {
             const card = document.createElement('div');
             card.className = 'vid-card';
-            
             const vStr = encodeURIComponent(JSON.stringify(v));
             card.onclick = () => playVideo(vStr);
 
@@ -768,13 +751,11 @@ HTML_TEMPLATE = """
             const initial = channelName ? channelName.charAt(0).toUpperCase() : '?';
             
             let cUrl = v.channelUrl ? "https://www.youtube.com" + v.channelUrl : "#";
-
             let avatarHtml = avatarUrl 
                 ? `<a href="${cUrl}" target="_blank" onclick="event.stopPropagation()" class="channel-avatar"><img src="${avatarUrl}" onerror="this.style.display='none'"></a>` 
                 : `<a href="${cUrl}" target="_blank" onclick="event.stopPropagation()" class="channel-avatar" style="display:flex;align-items:center;justify-content:center;font-size:16px;">${initial}</a>`;
             
             let channelHtml = `<a href="${cUrl}" target="_blank" onclick="event.stopPropagation()" class="vid-channel">${escHtml(channelName)}</a>`;
-
             let metaStr = [views, published].filter(Boolean).join(' • ');
             let thumbUrl = `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`;
             let aspectStyle = isShortsMode ? 'aspect-ratio: 9/16;' : 'aspect-ratio: 16/9;';
@@ -807,9 +788,7 @@ HTML_TEMPLATE = """
 """
 
 def extract_video_data(video):
-    """Extract all available metadata safely from a scrapetube video object."""
     data = {"id": video.get("videoId"), "title": "No Title"}
-    
     try: 
         runs = video.get("title", {}).get("runs")
         if runs: data["title"] = runs[0].get("text", "No Title")
@@ -844,9 +823,9 @@ def extract_video_data(video):
         desc_runs = video.get("detailedMetadataSnippets", [{}])[0].get("snippetText", {}).get("runs", [])
         if not desc_runs:
             desc_runs = video.get("descriptionSnippet", {}).get("runs", [])
-        data["description"] = "".join([r.get("text", "") for r in desc_runs]) if desc_runs else "Tidak ada deskripsi yang tersedia."
+        data["description"] = "".join([r.get("text", "") for r in desc_runs]) if desc_runs else ""
     except Exception:
-        data["description"] = "Tidak ada deskripsi yang tersedia."
+        data["description"] = ""
 
     return data
 
@@ -858,13 +837,13 @@ def home():
 def api_trending():
     results = []
     try:
-        videos = scrapetube.get_trending("ID", limit=24)
+        videos = scrapetube.get_trending("ID", limit=30)
         for v in videos:
             d = extract_video_data(v)
             if d.get("id"): results.append(d)
     except Exception:
         try:
-            videos = scrapetube.get_search("trending Indonesia", limit=24)
+            videos = scrapetube.get_search("trending Indonesia", limit=30)
             for v in videos:
                 d = extract_video_data(v)
                 if d.get("id"): results.append(d)
@@ -874,35 +853,73 @@ def api_trending():
 @app.route("/api/search")
 def api_search():
     query = request.args.get("q", "").strip()
+    offset = int(request.args.get("offset", 0))
+    limit = 20
+    
     results = []
     if not query:
         return jsonify(results)
+        
     try:
-        videos = scrapetube.get_search(query, limit=50)
-        for v in videos:
-            d = extract_video_data(v)
-            if d.get("id"): results.append(d)
+        # scrapetube doesn't support native offset, we simulate it by fetching offset+limit and slicing
+        videos = scrapetube.get_search(query, limit=offset+limit)
+        for i, v in enumerate(videos):
+            if i >= offset:
+                d = extract_video_data(v)
+                if d.get("id"): results.append(d)
     except Exception: pass
+    
     return jsonify(results)
 
 @app.route("/api/shorts")
 def api_shorts():
     results = []
     try:
-        videos = scrapetube.get_search("shorts viral #shorts", limit=50)
+        videos = scrapetube.get_search("shorts viral #shorts", limit=60)
         for v in videos:
             d = extract_video_data(v)
             dur_text = d.get("duration", "")
+            is_short = False
             if dur_text:
                 parts = dur_text.split(":")
-                if len(parts) == 1 or (len(parts) == 2 and int(parts[0]) == 0):
-                    if d.get("id") and d["id"] not in [item["id"] for item in results]:
-                        results.append(d)
-            if len(results) >= 16:
+                if len(parts) == 1:
+                    is_short = True
+                elif len(parts) == 2 and int(parts[0]) == 0 and int(parts[1]) <= 60:
+                    is_short = True
+            
+            if is_short and d.get("id"):
+                if not any(r["id"] == d["id"] for r in results):
+                    results.append(d)
+            if len(results) >= 20:
                 break
     except Exception:
         pass
     return jsonify(results)
+
+@app.route("/api/suggest")
+def api_suggest():
+    query = request.args.get("q", "").strip()
+    if not query or len(query) < 2:
+        return jsonify([])
+        
+    suggestions = set()
+    try:
+        # Use search results titles to extract relevant keywords as mock suggestions
+        videos = scrapetube.get_search(query, limit=5)
+        for v in videos:
+            title = v.get("title", {}).get("runs", [{}])[0].get("text", "")
+            if title:
+                # Simple logic: if the title contains the query, suggest the full title
+                if query.lower() in title.lower():
+                    suggestions.add(title)
+                    
+            byline = v.get("longBylineText", {}).get("runs", [{}])[0].get("text", "")
+            if byline and query.lower() in byline.lower():
+                suggestions.add(byline)
+                
+    except Exception: pass
+    
+    return jsonify(list(suggestions)[:7])
 
 if __name__ == "__main__":
     app.run(debug=True, port=2000)
