@@ -88,7 +88,6 @@ HTML_TEMPLATE = """
         .yt-logo-box { display: flex; align-items: center; background: #ff0000; width: 32px; height: 22px; border-radius: 5px; justify-content: center; position: relative; flex-shrink: 0; }
         .yt-logo-box::after { content: ""; position: absolute; width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 9px solid #fff; left: 12px; }
         
-        /* Logo YouTube Premium persis seperti gambar referensi */
         .yt-logo-text-img { font-size: 20px; font-weight: 700; letter-spacing: -0.8px; color: var(--text-color); font-family: 'Roboto', sans-serif; }
         
         .header-right { display: flex; align-items: center; gap: 8px; }
@@ -439,6 +438,7 @@ HTML_TEMPLATE = """
         }
     });
 
+    // ===== INFINITE SCROLL GLOBAL (BERANDA & SEARCH) =====
     window.addEventListener('scroll', () => {
         if (!isLoadingMore && document.getElementById('main').style.display !== 'none' && currentQuery !== 'shorts') {
             if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 300) {
@@ -456,6 +456,7 @@ HTML_TEMPLATE = """
         try { 
             const res = await fetch('/api/home'); 
             activeData = await res.json(); 
+            currentOffset = activeData.length;
             renderGrid(activeData); 
         } catch(e) {
             showToast('Gagal memuat beranda. Periksa koneksi Anda.');
@@ -463,17 +464,22 @@ HTML_TEMPLATE = """
     }
 
     async function loadMoreData() {
-        isLoadingMore = true; document.getElementById('scroll-loader').style.display = 'flex';
+        if (isLoadingMore) return;
+        isLoadingMore = true; 
+        document.getElementById('scroll-loader').style.display = 'flex';
         try {
-            let fetchUrl = currentQuery ? `/api/search?q=${encodeURIComponent(currentQuery)}&offset=${currentOffset}` : '/api/home';
+            let fetchUrl = currentQuery ? `/api/search?q=${encodeURIComponent(currentQuery)}&offset=${currentOffset}` : `/api/home`;
             const res = await fetch(fetchUrl);
             const data = await res.json();
-            if (data.length > 0) { 
+            if (data && data.length > 0) { 
                 currentOffset += data.length; 
                 activeData = activeData.concat(data);
                 appendToGrid(data, 'video-grid'); 
             }
-        } catch(e){} finally { isLoadingMore = false; document.getElementById('scroll-loader').style.display = 'none'; }
+        } catch(e){} finally { 
+            isLoadingMore = false; 
+            document.getElementById('scroll-loader').style.display = 'none'; 
+        }
     }
 
     function toggleSearch(show) {
@@ -552,7 +558,7 @@ HTML_TEMPLATE = """
 
         renderSearchFilterChips();
 
-        fetch('/api/search?q=' + encodeURIComponent(q))
+        fetch('/api/search?q=' + encodeURIComponent(q) + '&offset=0')
             .then(r => r.json())
             .then(d => { 
                 currentOffset = d.length; 
@@ -608,7 +614,7 @@ HTML_TEMPLATE = """
             currentQuery = query; 
             currentOffset = 0; 
             showSkeletons(); 
-            fetch('/api/search?q=' + encodeURIComponent(query)).then(r=>r.json()).then(d => { currentOffset=d.length; activeData=d; renderGrid(d); }); 
+            fetch('/api/search?q=' + encodeURIComponent(query) + '&offset=0').then(r=>r.json()).then(d => { currentOffset=d.length; activeData=d; renderGrid(d); }); 
         } else {
             loadHome();
         }
@@ -835,23 +841,27 @@ HTML_TEMPLATE = """
         window.scrollTo(0,0);
     }
 
+    // ===== PERBAIKAN TOTAL: TOMBOL PAUSE/PLAY MINI PLAYER SINKRON & MATI TOTAL =====
     function toggleMiniPlay(e) {
         e.stopPropagation();
         const icon = document.getElementById('mini-play-icon');
         const miniSlot = document.getElementById('mini-video-slot');
+        const mainPlayerBox = document.getElementById('player-box');
         
         if (isMiniPlaying) {
             isMiniPlaying = false;
             icon.textContent = 'play_arrow';
-            // Membersihkan iframe sepenuhnya agar audio/video benar-benar mati total
+            // Kosongkan iframe agar audio dan video berhenti total di latar belakang
             miniSlot.innerHTML = '';
+            mainPlayerBox.innerHTML = '';
             showToast('Video dijeda');
         } else {
             isMiniPlaying = true;
             icon.textContent = 'pause';
             if (activeVideoId) {
-                // Memuat ulang iframe saat tombol play diklik
+                // Muat ulang iframe pemutar mini dan utama secara bersamaan (sinkron)
                 miniSlot.innerHTML = `<iframe id="mini-yt-iframe" src="https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&controls=0&mute=0&rel=0&playsinline=1" allow="autoplay"></iframe>`;
+                mainPlayerBox.innerHTML = `<iframe id="yt-iframe" src="https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&rel=0&fs=0&iv_load_policy=3&modestbranding=1" allow="autoplay"></iframe>`;
             }
             showToast('Video dilanjutkan');
         }
