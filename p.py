@@ -92,13 +92,11 @@ HTML_TEMPLATE = """
         .header-right { display: flex; align-items: center; gap: 8px; }
         .header-icon { background: transparent; border: none; color: var(--text-color); display: flex; align-items: center; justify-content: center; cursor: pointer; width: 40px; height: 40px; border-radius: 50%; }
         
-        /* HEADER KETIKA HASIL PENCARIAN AKTIF (GAYA YOUTUBE) */
         .search-active-header { display: none; align-items: center; width: 100%; height: 56px; gap: 8px; position: fixed; top: 0; left: 0; background: var(--surface-color); z-index: 105; padding: 0 12px; }
         .search-active-header.active { display: flex; }
         .search-bar-box { flex: 1; display: flex; align-items: center; background: var(--card-bg); border-radius: 20px; padding: 0 16px; height: 38px; justify-content: space-between; cursor: pointer; }
         .search-bar-text { font-size: 15px; color: var(--text-color); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex: 1; }
 
-        /* PENCARIAN FULLSCREEN OVERLAY */
         .search-form-mobile { display: none; position: fixed; inset: 0; background: var(--bg-color); padding: 0 12px; flex-direction: column; z-index: 110; }
         .search-form-mobile.active { display: flex; }
         .search-top-bar { display: flex; align-items: center; height: 56px; gap: 8px; width: 100%; flex-shrink: 0; }
@@ -111,14 +109,12 @@ HTML_TEMPLATE = """
         .suggestion-left .material-icons-outlined { color: var(--sub-text); font-size: 20px; }
         .suggestion-arrow { color: var(--sub-text); font-size: 18px; transform: rotate(45deg); padding: 4px; }
 
-        /* CHIPS */
         .chips-wrapper { position: sticky; top: 56px; background: var(--surface-color); backdrop-filter: blur(10px); z-index: 10; padding: 12px 16px; display: flex; gap: 12px; align-items: center; border-bottom: 1px solid var(--border-color); }
         .explore-icon { background: var(--card-bg); padding: 6px; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-color); }
         .chips-bar { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
         .chip { padding: 6px 14px; border-radius: 8px; font-size: 14px; font-weight: 500; white-space: nowrap; border: none; background: var(--card-bg); color: var(--text-color); cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 4px; }
         .chip.active { background: var(--text-color); color: var(--bg-color); }
 
-        /* GRID VIDEO */
         #main { margin-top: 56px; padding-bottom: 70px; min-height: 100vh; }
         .video-grid { display: flex; flex-direction: column; gap: 0; }
         .vid-card { cursor: pointer; display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
@@ -132,13 +128,11 @@ HTML_TEMPLATE = """
         .vid-title { font-size: 15px; font-weight: 500; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 4px; color: var(--text-color); }
         .vid-meta { font-size: 13px; color: var(--sub-text); }
 
-        /* ===== SHORTS FEED VERTIKAL (9:16) ===== */
         .shorts-container { display: flex; flex-direction: column; gap: 24px; padding: 16px; align-items: center; }
         .short-card { width: 100%; max-width: 360px; aspect-ratio: 9/16; background: #000; border-radius: 16px; position: relative; overflow: hidden; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
         .short-card iframe { width: 100%; height: 100%; border: none; pointer-events: none; }
         .short-overlay { position: absolute; bottom: 16px; left: 16px; right: 16px; color: #fff; z-index: 2; pointer-events: none; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
 
-        /* ===== PLAYER SECTION ===== */
         #player-section { display: none; margin-top: 0; padding-bottom: 70px; min-height: 100vh; background: var(--bg-color); z-index: 200; position: absolute; top: 0; left: 0; width: 100%; transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
         .player-container { width: 100%; aspect-ratio: 16/9; background: #000; position: sticky; top: 0; z-index: 105; touch-action: none; }
         .player-container iframe { width: 100%; height: 100%; border: none; pointer-events: auto; }
@@ -161,18 +155,25 @@ HTML_TEMPLATE = """
         
         .comments-box { background: var(--card-bg); border-radius: 12px; padding: 12px 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500; color: var(--text-color); cursor: pointer; }
 
-        /* ===== MINI PLAYER ===== */
+        /* ===== MINI PLAYER VIDEO AKTIF (YOUTUBE STYLE) ===== */
         #mini-player { display: none; position: fixed; bottom: 50px; left: 0; right: 0; height: 56px; background: var(--surface-color); backdrop-filter: blur(10px); z-index: 99; align-items: center; padding: 0 12px; border-top: 1px solid var(--border-color); }
         #mini-player.active { display: flex; animation: fadeIn 0.3s; }
-        .mini-thumb { width: 80px; height: 45px; background: #000; margin-right: 12px; cursor: pointer; position: relative; flex-shrink: 0; }
-        .mini-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .mini-thumb { 
+            width: 80px; height: 45px; background: #000; margin-right: 12px; cursor: pointer; position: relative; flex-shrink: 0; 
+            overflow: hidden; border-radius: 4px; pointer-events: none; /* Supaya klik tembus ke container utama */
+        }
+        /* Iframe video tetap terputar kecil di dalam mini player */
+        .mini-thumb iframe {
+            width: 100%; height: 100%; border: none; pointer-events: none; transform: scale(1.5);
+        }
+
         .mini-info { flex: 1; overflow: hidden; white-space: nowrap; cursor: pointer; }
         .mini-title { font-size: 13px; font-weight: 500; color: var(--text-color); text-overflow: ellipsis; overflow: hidden; margin-bottom: 2px; }
         .mini-channel { font-size: 11px; color: var(--sub-text); text-overflow: ellipsis; overflow: hidden; }
         .mini-actions { display: flex; align-items: center; gap: 12px; color: var(--text-color); }
         .mini-actions .material-icons { font-size: 26px; cursor: pointer; }
 
-        /* ===== BOTTOM NAV ===== */
         #bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 50px; background: var(--surface-color); backdrop-filter: blur(10px); z-index: 100; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid var(--border-color); }
         .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-color); flex: 1; height: 100%; cursor: pointer; opacity: 0.7; }
         .nav-item.active { opacity: 1; color: var(--text-color); }
@@ -183,7 +184,6 @@ HTML_TEMPLATE = """
         .nav-avatar { width: 24px; height: 24px; border-radius: 50%; background: #ff4e45; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; border: 2px solid transparent; color: #fff; }
         .nav-item.active .nav-avatar { border-color: var(--text-color); }
 
-        /* ===== BOTTOM SHEET PENGATURAN ===== */
         #sheet-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; opacity: 0; transition: opacity 0.3s; }
         #sheet-overlay.show { display: block; opacity: 1; }
         #settings-sheet { display: flex; flex-direction: column; position: fixed; bottom: -100%; left: 0; right: 0; background: var(--bg-color); border-top: 1px solid var(--border-color); border-radius: 16px 16px 0 0; z-index: 10000; transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1); padding-bottom: 24px; max-height: 80vh; overflow-y: auto; color: var(--text-color); }
@@ -213,7 +213,6 @@ HTML_TEMPLATE = """
         <button class="header-icon" onclick="openSettings()"><span class="material-icons-outlined">more_vert</span></button>
     </div>
     
-    <!-- HEADER BAR KETIKA HASIL PENCARIAN AKTIF (Menampilkan kata kunci yang dicari di atas seperti YouTube asli) -->
     <div class="search-active-header" id="search-active-header">
         <button type="button" class="header-icon" onclick="goHome(null)"><span class="material-icons-outlined">arrow_back</span></button>
         <div class="search-bar-box" onclick="toggleSearch(true)">
@@ -223,7 +222,6 @@ HTML_TEMPLATE = """
         <button type="button" class="header-icon" onclick="showToast('Fitur suara belum tersedia')"><span class="material-icons-outlined">mic</span></button>
     </div>
 
-    <!-- FORM PENCARIAN FULLSCREEN (Saat ikon search ditekan) -->
     <form class="search-form-mobile" id="mobile-search-form" onsubmit="submitSearch(event)">
         <div class="search-top-bar">
             <button type="button" class="header-icon" onclick="toggleSearch(false)"><span class="material-icons-outlined">arrow_back</span></button>
@@ -254,6 +252,7 @@ HTML_TEMPLATE = """
 
 <div id="player-section">
     <div class="player-container" id="player-container-box">
+        <!-- Pemutar Utama (Iframe Video) -->
         <div id="player-box" style="width:100%; height:100%;"></div>
     </div>
     
@@ -294,7 +293,6 @@ HTML_TEMPLATE = """
     </div>
 </div>
 
-<!-- Bottom Sheet Pengaturan & Lainnya -->
 <div id="sheet-overlay" onclick="closeSettings()"></div>
 <div id="settings-sheet">
     <div class="sheet-handle"></div>
@@ -314,10 +312,10 @@ HTML_TEMPLATE = """
     </div>
 </div>
 
-<!-- Mini Player Melayang -->
+<!-- Mini Player dengan Video Aktif Berjalan di Latar Belakang -->
 <div id="mini-player">
     <div class="mini-thumb" onclick="expandPlayer()">
-        <img id="mini-thumb-img" src="">
+        <div id="mini-video-slot" style="width:100%; height:100%;"></div>
     </div>
     <div class="mini-info" onclick="expandPlayer()">
         <div class="mini-title" id="mini-title">Judul Video</div>
@@ -361,6 +359,7 @@ HTML_TEMPLATE = """
     let debounceTimer = null;
     let isSubscribed = false;
     let isMiniPlaying = true;
+    let activeVideoId = '';
 
     window.addEventListener('DOMContentLoaded', () => { 
         loadHome(); 
@@ -453,7 +452,7 @@ HTML_TEMPLATE = """
         const form = document.getElementById('mobile-search-form');
         const input = document.getElementById('keyword-mobile');
         if (show) { 
-            input.value = currentQuery; // Pertahankan teks pencarian sebelumnya jika ada
+            input.value = currentQuery; 
             form.classList.add('active'); 
             input.focus(); 
             history.pushState({page: 'search'}, '', '');
@@ -520,7 +519,6 @@ HTML_TEMPLATE = """
         toggleSearch(false); 
         showSkeletons();
         
-        // Tampilkan header atas bergaya YouTube saat hasil pencarian aktif
         document.getElementById('active-search-keyword').textContent = q;
         document.getElementById('search-active-header').classList.add('active');
 
@@ -782,6 +780,7 @@ HTML_TEMPLATE = """
         let v; try { v = JSON.parse(decodeURIComponent(videoStr)); } catch(e){ return; }
         currentPlayingVideoStr = videoStr; 
         isMiniPlaying = true;
+        activeVideoId = v.id;
         
         document.getElementById('main').style.display = 'none';
         document.getElementById('mini-player').classList.remove('active');
@@ -797,13 +796,15 @@ HTML_TEMPLATE = """
         document.getElementById('player-channel-avatar').src = v.avatar || '';
         document.getElementById('player-views').textContent = (v.views || '123 rb tampilan') + ' • ' + (v.published || 'Baru saja');
         
+        // Render video di player utama
         document.getElementById('player-box').innerHTML = `<iframe id="yt-iframe" src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0&fs=0&iv_load_policy=3&modestbranding=1" allow="autoplay"></iframe>`;
         
         let related = [...activeData].sort(() => 0.5 - Math.random()).slice(0, 5);
         document.getElementById('related-grid').innerHTML = '';
         appendToGrid(related, 'related-grid');
 
-        document.getElementById('mini-thumb-img').src = `https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`;
+        // Render video juga di slot mini player agar tetap terputar di background
+        document.getElementById('mini-video-slot').innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&controls=0&mute=0&rel=0"></iframe>`;
         document.getElementById('mini-title').textContent = v.title;
         document.getElementById('mini-channel').textContent = v.channel;
         document.getElementById('mini-play-icon').textContent = 'pause';
@@ -814,22 +815,23 @@ HTML_TEMPLATE = """
     function toggleMiniPlay(e) {
         e.stopPropagation();
         const icon = document.getElementById('mini-play-icon');
-        const iframe = document.querySelector('#player-box iframe');
+        const playerBox = document.getElementById('player-box');
+        const miniSlot = document.getElementById('mini-video-slot');
         
         if (isMiniPlaying) {
             isMiniPlaying = false;
             icon.textContent = 'play_arrow';
-            if(iframe) {
-                let currentSrc = iframe.src.replace('autoplay=1', 'autoplay=0');
-                iframe.src = currentSrc;
-            }
+            // Kosongkan iframe agar video berhenti total (pause)
+            playerBox.innerHTML = '';
+            miniSlot.innerHTML = '';
             showToast('Video dijeda');
         } else {
             isMiniPlaying = true;
             icon.textContent = 'pause';
-            if(iframe) {
-                let currentSrc = iframe.src.replace('autoplay=0', 'autoplay=1');
-                iframe.src = currentSrc;
+            // Muat ulang iframe untuk melanjutkan pemutaran
+            if (activeVideoId) {
+                playerBox.innerHTML = `<iframe id="yt-iframe" src="https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&rel=0&fs=0&iv_load_policy=3&modestbranding=1" allow="autoplay"></iframe>`;
+                miniSlot.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&controls=0&mute=0&rel=0"></iframe>`;
             }
             showToast('Video dilanjutkan');
         }
@@ -860,8 +862,10 @@ HTML_TEMPLATE = """
 
     function closeMiniPlayer() {
         currentPlayingVideoStr = '';
+        activeVideoId = '';
         document.getElementById('mini-player').classList.remove('active');
         document.getElementById('player-box').innerHTML = '';
+        document.getElementById('mini-video-slot').innerHTML = '';
         document.getElementById('player-container-box').classList.remove('css-fullscreen');
         document.getElementById('fs-icon').textContent = 'fullscreen';
         document.body.style.overflow = '';
