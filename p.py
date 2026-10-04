@@ -45,7 +45,6 @@ HTML_TEMPLATE = """
         .search-form-mobile.active { display: flex; }
         .search-input-wrap-mob { flex: 1; display: flex; align-items: center; background: #222; border-radius: 20px; padding: 0 16px; height: 36px; }
         .search-input-wrap-mob input { flex: 1; background: transparent; border: none; color: #fff; font-size: 15px; outline: none; }
-
         .search-btn-mobile-toggle { display: none; background: transparent; border: none; color: #fff; cursor: pointer; padding: 8px; }
 
         /* ===== SIDEBAR (DESKTOP) ===== */
@@ -107,6 +106,21 @@ HTML_TEMPLATE = """
         .action-pill:hover { background: #3f3f3f; }
         
         .comments-box { background: #272727; border-radius: 12px; padding: 16px; margin-top: 16px; }
+
+        /* ===== PROFILE / ANDA TAB ===== */
+        #profile-section { display: none; margin-left: 240px; margin-top: 56px; padding: 24px; min-height: 100vh; }
+        .profile-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+        .profile-avatar { width: 72px; height: 72px; border-radius: 50%; background: #ff4e45; color: #fff; font-size: 32px; display: flex; align-items: center; justify-content: center; }
+        .profile-name { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+        .profile-handle { font-size: 14px; color: #aaa; margin-bottom: 12px; }
+        .profile-btn { background: #272727; border: none; color: #fff; padding: 6px 12px; border-radius: 16px; font-size: 13px; font-weight: 500; cursor: pointer; }
+        
+        .horizontal-list { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 16px; scrollbar-width: none; }
+        .horizontal-list::-webkit-scrollbar { display: none; }
+        .hist-card { width: 160px; flex-shrink: 0; cursor: pointer; }
+        .hist-thumb { width: 100%; aspect-ratio: 16/9; background: #272727; border-radius: 8px; margin-bottom: 8px; object-fit: cover; }
+        .hist-title { font-size: 14px; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 4px; }
+        .hist-channel { font-size: 13px; color: #aaa; }
         
         #scroll-loader { display: none; justify-content: center; padding: 40px 0; grid-column: 1 / -1; }
         .spinner { width: 32px; height: 32px; border: 3px solid #333; border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
@@ -114,7 +128,6 @@ HTML_TEMPLATE = """
 
         /* =========================================
            MEDIA QUERIES (MODE HP / MOBILE)
-           Otomatis aktif jika layar < 792px
            ========================================= */
         @media (max-width: 792px) {
             #sidebar { display: none; }
@@ -137,6 +150,10 @@ HTML_TEMPLATE = """
             .player-container { border-radius: 0; position: sticky; top: 0; z-index: 105; }
             .player-meta { padding: 12px 16px; }
             .player-title { font-size: 18px; }
+
+            #profile-section { margin-left: 0; padding: 0; padding-bottom: 60px; }
+            .profile-header { padding: 24px 16px; margin-bottom: 0; }
+            .horizontal-list { padding: 0 16px 16px; }
         }
     </style>
 </head>
@@ -144,8 +161,7 @@ HTML_TEMPLATE = """
 
 <header id="header">
     <div class="header-left">
-        <button class="header-icon" style="display:none;" id="menu-btn"><span class="material-icons-outlined">menu</span></button>
-        <a class="yt-logo" href="#" onclick="goHome(event)">
+        <a class="yt-logo" href="#" onclick="goHome(event, document.querySelector('.nav-item'))">
             <svg viewBox="0 0 24 24" style="height:22px; color:#FF0000; fill:currentColor;"><path d="M21.58,7.19C21.35,6.33 20.67,5.65 19.81,5.42C18.25,5 12,5 12,5C12,5 5.75,5 4.19,5.42C3.33,5.65 2.65,6.33 2.42,7.19C2,8.75 2,12 2,12C2,12 2,15.25 2.42,16.81C2.65,17.67 3.33,18.35 4.19,18.58C5.75,19 12,19 12,19C12,19 18.25,19 19.81,18.58C20.67,18.35 21.35,17.67 21.58,16.81C22,15.25 22,12 22,12C22,12 22,8.75 21.58,7.19Z"/><path d="M10,15L15.5,12L10,9V15Z" fill="white"/></svg>
             <span class="yt-logo-text">YouTube</span>
         </a>
@@ -179,11 +195,10 @@ HTML_TEMPLATE = """
 
 <nav id="sidebar">
     <div class="sidebar-item active" onclick="goHome(event)"><span class="material-icons-outlined">home</span><span class="sidebar-label">Beranda</span></div>
-    <div class="sidebar-item"><span class="material-icons-outlined">play_circle</span><span class="sidebar-label">Shorts</span></div>
+    <div class="sidebar-item" onclick="loadShorts(this)"><span class="material-icons-outlined">play_circle</span><span class="sidebar-label">Shorts</span></div>
     <div class="sidebar-item"><span class="material-icons-outlined">subscriptions</span><span class="sidebar-label">Subscription</span></div>
     <div class="sidebar-divider"></div>
-    <div class="sidebar-item"><span class="material-icons-outlined">history</span><span class="sidebar-label">Histori</span></div>
-    <div class="sidebar-item"><span class="material-icons-outlined">schedule</span><span class="sidebar-label">Tonton Nanti</span></div>
+    <div class="sidebar-item" onclick="showProfile(this)"><span class="material-icons-outlined">history</span><span class="sidebar-label">Histori</span></div>
 </nav>
 
 <main id="main">
@@ -217,7 +232,7 @@ HTML_TEMPLATE = """
         </div>
         
         <div class="action-row">
-            <div class="action-pill"><span class="material-icons-outlined">thumb_up</span> 145 rb</div>
+            <div class="action-pill"><span class="material-icons-outlined">thumb_up</span> Suka</div>
             <div class="action-pill"><span class="material-icons-outlined">thumb_down</span></div>
             <div class="action-pill"><span class="material-icons-outlined">reply</span> Bagikan</div>
             <div class="action-pill"><span class="material-icons-outlined">download</span> Download</div>
@@ -233,12 +248,35 @@ HTML_TEMPLATE = """
     </div>
 </div>
 
+<div id="profile-section">
+    <div class="profile-header">
+        <div class="profile-avatar">t</div>
+        <div>
+            <div class="profile-name">teu apal</div>
+            <div class="profile-handle">@teuapal • Lihat channel</div>
+            <button class="profile-btn">Buat channel</button>
+        </div>
+    </div>
+    <div style="padding: 16px; font-size: 18px; font-weight: 700;">Histori</div>
+    <div class="horizontal-list" id="history-scroll"></div>
+</div>
+
 <nav id="bottom-nav">
-    <div class="nav-item active" onclick="goHome(event)"><span class="material-icons-outlined">home</span><span class="nav-label">Beranda</span></div>
-    <div class="nav-item"><span class="material-icons-outlined">play_circle</span><span class="nav-label">Shorts</span></div>
-    <div class="nav-item"><span class="material-icons-outlined" style="font-size: 36px; font-weight: 200;">add_circle_outline</span></div>
-    <div class="nav-item"><span class="material-icons-outlined">subscriptions</span><span class="nav-label">Subscription</span></div>
-    <div class="nav-item"><div class="nav-avatar">t</div><span class="nav-label">Anda</span></div>
+    <div class="nav-item active" onclick="goHome(event, this)">
+        <span class="material-icons-outlined">home</span><span class="nav-label">Beranda</span>
+    </div>
+    <div class="nav-item" onclick="loadShorts(this)">
+        <span class="material-icons-outlined">play_circle</span><span class="nav-label">Shorts</span>
+    </div>
+    <div class="nav-item" onclick="alert('Fitur upload video segera hadir')">
+        <span class="material-icons-outlined" style="font-size: 36px; font-weight: 200;">add_circle_outline</span>
+    </div>
+    <div class="nav-item" onclick="activateNav(this); alert('Menu Subscription')">
+        <span class="material-icons-outlined">subscriptions</span><span class="nav-label">Subscription</span>
+    </div>
+    <div class="nav-item" onclick="showProfile(this)">
+        <div class="nav-avatar">t</div><span class="nav-label">Anda</span>
+    </div>
 </nav>
 
 <script>
@@ -248,8 +286,8 @@ HTML_TEMPLATE = """
     
     window.addEventListener('DOMContentLoaded', () => { loadHome(); });
     
-    // Perbaikan: Hapus pengecekan `currentQuery !== ''` agar saat di beranda pun akan me-load video baru
     window.addEventListener('scroll', () => {
+        // Cek jika sedang ada di Beranda/Search
         if (!isLoadingMore && document.getElementById('main').style.display !== 'none') {
             if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 300) {
                 loadMoreData();
@@ -267,7 +305,6 @@ HTML_TEMPLATE = """
     async function loadMoreData() {
         isLoadingMore = true; document.getElementById('scroll-loader').style.display = 'flex';
         try {
-            // Jika ada pencarian, panggil API pencarian dengan offset. Jika kosong (di beranda), panggil API home untuk video acak.
             let fetchUrl = currentQuery ? `/api/search?q=${encodeURIComponent(currentQuery)}&offset=${currentOffset}` : '/api/home';
             const res = await fetch(fetchUrl);
             const data = await res.json();
@@ -289,6 +326,7 @@ HTML_TEMPLATE = """
         e.preventDefault(); 
         const q = document.getElementById(source === 'desktop' ? 'keyword-desktop' : 'keyword-mobile').value.trim();
         if (q) { 
+            activateNav(document.querySelector('.nav-item')); // Switch tab to home icon
             currentQuery = q; currentOffset = 0; 
             if(source === 'mobile') toggleMobileSearch(false); 
             showSkeletons();
@@ -302,18 +340,68 @@ HTML_TEMPLATE = """
         else loadHome();
     }
 
-    function goHome(e) { 
-        if (e) e.preventDefault(); 
+    // Logic untuk mengatur tampilan saat tab diklik
+    function activateNav(el) {
+        if(!el) return;
+        document.querySelectorAll('.nav-item, .sidebar-item').forEach(n => n.classList.remove('active'));
+        el.classList.add('active');
+        
+        // Tampilkan main content, sembunyikan player dan profil
         document.getElementById('main').style.display = 'block';
         document.getElementById('player-section').style.display = 'none';
-        document.getElementById('player-box').innerHTML = '';
+        document.getElementById('profile-section').style.display = 'none';
+        document.getElementById('player-box').innerHTML = ''; // Hentikan video berjalan
+    }
+
+    function goHome(e, el) { 
+        if (e) e.preventDefault(); 
+        activateNav(el || document.querySelector('.nav-item')); // Aktifkan ikon beranda
+        document.getElementById('chips-container').style.display = 'block';
         loadHome(); 
+    }
+    
+    function loadShorts(el) {
+        activateNav(el);
+        document.getElementById('chips-container').style.display = 'none';
+        showSkeletons();
+        currentQuery = 'shorts'; 
+        fetch('/api/shorts').then(r=>r.json()).then(d => { renderGrid(d); });
+    }
+
+    function showProfile(el) {
+        activateNav(el);
+        // Sembunyikan main (beranda), tampilkan profil
+        document.getElementById('main').style.display = 'none';
+        document.getElementById('profile-section').style.display = 'block';
+        
+        const hist = JSON.parse(localStorage.getItem('yt_history') || '[]');
+        const container = document.getElementById('history-scroll');
+        if(hist.length === 0) { 
+            container.innerHTML = '<div style="color:#aaa; font-size:13px; padding-left:16px;">Belum ada histori tontonan.</div>'; 
+            return; 
+        }
+        
+        container.innerHTML = hist.slice(0,10).map(v => {
+            const vStr = encodeURIComponent(JSON.stringify(v));
+            return `<div class="hist-card" onclick="playVideo('${vStr}')">
+                <img src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" class="hist-thumb">
+                <div class="hist-title">${v.title}</div>
+                <div class="hist-channel">${v.channel}</div>
+            </div>`;
+        }).join('');
     }
 
     function playVideo(videoStr) {
         let v; try { v = JSON.parse(decodeURIComponent(videoStr)); } catch(e){ return; }
         
+        // Save to History
+        let hist = JSON.parse(localStorage.getItem('yt_history') || '[]');
+        hist = hist.filter(x => x.id !== v.id); hist.unshift(v);
+        if(hist.length > 50) hist.pop(); localStorage.setItem('yt_history', JSON.stringify(hist));
+
+        // Hide other pages, show Player
         document.getElementById('main').style.display = 'none';
+        document.getElementById('profile-section').style.display = 'none';
         const ps = document.getElementById('player-section');
         
         document.getElementById('player-title').textContent = v.title;
