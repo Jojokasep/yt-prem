@@ -3,8 +3,12 @@ import scrapetube
 import random
 import urllib.request
 import json
+import time
 
 app = Flask(__name__)
+
+# Simple In-Memory Cache untuk menghindari scraping berulang
+search_cache = {}
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -12,7 +16,7 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>YouTube Clone</title>
+    <title>YouTube Clone Pro</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
@@ -20,25 +24,44 @@ HTML_TEMPLATE = """
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto', Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
         
-        /* ===== LATAR BELAKANG BERGERAK REALTIME ===== */
+        /* ===== TEMA WARNA (DARK / LIGHT MODE) ===== */
+        :root {
+            --bg-gradient: linear-gradient(-45deg, #0f0f0f, #181111, #0f0f0f, #111818);
+            --bg-color: #0f0f0f;
+            --text-color: #f1f1f1;
+            --sub-text: #aaa;
+            --surface-color: rgba(15,15,15,0.9);
+            --card-bg: #272727;
+            --border-color: rgba(255,255,255,0.1);
+        }
+        [data-theme="light"] {
+            --bg-gradient: linear-gradient(-45deg, #f9f9f9, #ffffff, #f1f1f1, #ffffff);
+            --bg-color: #f9f9f9;
+            --text-color: #0f0f0f;
+            --sub-text: #606060;
+            --surface-color: rgba(255,255,255,0.9);
+            --card-bg: #e5e5e5;
+            --border-color: rgba(0,0,0,0.1);
+        }
+
         @keyframes bgGradientMove {
             0% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
             100% { background-position: 0% 50%; }
         }
         body { 
-            background: linear-gradient(-45deg, #0f0f0f, #181111, #0f0f0f, #111818); 
+            background: var(--bg-gradient); 
             background-size: 400% 400%; 
             animation: bgGradientMove 15s ease infinite;
-            color: #f1f1f1; 
+            color: var(--text-color); 
             overflow-x: hidden; 
             min-height: 100vh;
+            transition: background 0.3s, color 0.3s;
         }
         
         ::-webkit-scrollbar { width: 0; height: 0; display: none; }
         a { text-decoration: none; color: inherit; }
 
-        /* ===== ANIMASI LOADING & TRANSISI ===== */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -50,159 +73,152 @@ HTML_TEMPLATE = """
             100% { background-position: 1000px 0; }
         }
         .skeleton {
-            background: #272727;
-            background-image: linear-gradient(90deg, #272727 0px, #333 40px, #272727 80px);
+            background: var(--card-bg);
+            background-image: linear-gradient(90deg, var(--card-bg) 0px, #444 40px, var(--card-bg) 80px);
             background-size: 1000px 100%;
             animation: shimmer 2s infinite linear;
         }
 
-        /* ===== HEADER & LOGO YOUTUBE CSS ===== */
-        #header { position: fixed; top: 0; left: 0; right: 0; height: 56px; background: rgba(15,15,15,0.9); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 100; }
+        /* ===== TOAST NOTIFICATION ===== */
+        #toast {
+            position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%) translateY(100px);
+            background: #333; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 14px;
+            z-index: 99999; transition: transform 0.3s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        #toast.show { transform: translateX(-50%) translateY(0); }
+
+        /* ===== HEADER ===== */
+        #header { position: fixed; top: 0; left: 0; right: 0; height: 56px; background: var(--surface-color); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 100; border-bottom: 1px solid var(--border-color); }
         .header-left { display: flex; align-items: center; gap: 6px; cursor: pointer; }
-        
-        .yt-logo-box {
-            display: flex;
-            align-items: center;
-            background: #ff0000;
-            width: 30px;
-            height: 20px;
-            border-radius: 5px;
-            justify-content: center;
-            position: relative;
-        }
-        .yt-logo-box::after {
-            content: "";
-            position: absolute;
-            width: 0;
-            height: 0;
-            border-top: 5px solid transparent;
-            border-bottom: 5px solid transparent;
-            border-left: 9px solid #fff;
-            left: 11px;
-        }
-        .yt-logo-text { font-size: 20px; font-weight: 700; letter-spacing: -1px; color: #fff; }
+        .yt-logo-box { display: flex; align-items: center; background: #ff0000; width: 30px; height: 20px; border-radius: 5px; justify-content: center; position: relative; }
+        .yt-logo-box::after { content: ""; position: absolute; width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 9px solid #fff; left: 11px; }
+        .yt-logo-text { font-size: 20px; font-weight: 700; letter-spacing: -1px; color: var(--text-color); }
         
         .header-right { display: flex; align-items: center; gap: 8px; }
-        .header-icon { background: transparent; border: none; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; width: 40px; height: 40px; border-radius: 50%; }
+        .header-icon { background: transparent; border: none; color: var(--text-color); display: flex; align-items: center; justify-content: center; cursor: pointer; width: 40px; height: 40px; border-radius: 50%; }
         
-        /* ===== FORM PENCARIAN & DROPDOWN REKOMENDASI (GAYA YOUTUBE) ===== */
-        .search-form-mobile { display: none; position: fixed; inset: 0; background: #0f0f0f; padding: 0 12px; flex-direction: column; z-index: 110; }
+        /* PENCARIAN & SARAN */
+        .search-form-mobile { display: none; position: fixed; inset: 0; background: var(--bg-color); padding: 0 12px; flex-direction: column; z-index: 110; }
         .search-form-mobile.active { display: flex; }
         .search-top-bar { display: flex; align-items: center; height: 56px; gap: 8px; width: 100%; flex-shrink: 0; }
-        .search-input-wrap-mob { flex: 1; display: flex; align-items: center; background: #222; border-radius: 20px; padding: 0 16px; height: 38px; }
-        .search-input-wrap-mob input { flex: 1; background: transparent; border: none; color: #fff; font-size: 15px; outline: none; }
-        
-        /* Daftar Saran Pencarian Realtime */
-        .search-suggestions-list { flex: 1; overflow-y: auto; width: 100%; background: #0f0f0f; padding-top: 4px; }
-        .suggestion-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; color: #f1f1f1; font-size: 15px; cursor: pointer; }
-        .suggestion-item:active { background: rgba(255,255,255,0.1); }
-        .suggestion-left { display: flex; align-items: center; gap: 16px; }
-        .suggestion-left .material-icons-outlined { color: #aaa; font-size: 20px; }
-        .suggestion-arrow { color: #aaa; font-size: 18px; transform: rotate(45deg); }
+        .search-input-wrap-mob { flex: 1; display: flex; align-items: center; background: var(--card-bg); border-radius: 20px; padding: 0 16px; height: 38px; }
+        .search-input-wrap-mob input { flex: 1; background: transparent; border: none; color: var(--text-color); font-size: 15px; outline: none; }
+        .search-suggestions-list { flex: 1; overflow-y: auto; width: 100%; background: var(--bg-color); padding-top: 4px; }
+        .suggestion-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; color: var(--text-color); font-size: 15px; cursor: pointer; }
+        .suggestion-item:active { background: rgba(128,128,128,0.2); }
+        .suggestion-left { display: flex; align-items: center; gap: 16px; flex: 1; }
+        .suggestion-left .material-icons-outlined { color: var(--sub-text); font-size: 20px; }
+        .suggestion-arrow { color: var(--sub-text); font-size: 18px; transform: rotate(45deg); padding: 4px; }
 
-        /* ===== CHIPS ===== */
-        .chips-wrapper { position: sticky; top: 56px; background: rgba(15,15,15,0.9); backdrop-filter: blur(10px); z-index: 10; padding: 12px 16px; display: flex; gap: 12px; align-items: center; }
-        .explore-icon { background: #272727; padding: 6px; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        /* CHIPS */
+        .chips-wrapper { position: sticky; top: 56px; background: var(--surface-color); backdrop-filter: blur(10px); z-index: 10; padding: 12px 16px; display: flex; gap: 12px; align-items: center; border-bottom: 1px solid var(--border-color); }
+        .explore-icon { background: var(--card-bg); padding: 6px; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-color); }
         .chips-bar { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
-        .chip { padding: 6px 14px; border-radius: 8px; font-size: 14px; font-weight: 500; white-space: nowrap; border: none; background: #272727; color: #f1f1f1; cursor: pointer; transition: 0.2s; }
-        .chip.active { background: #f1f1f1; color: #0f0f0f; }
+        .chip { padding: 6px 14px; border-radius: 8px; font-size: 14px; font-weight: 500; white-space: nowrap; border: none; background: var(--card-bg); color: var(--text-color); cursor: pointer; transition: 0.2s; }
+        .chip.active { background: var(--text-color); color: var(--bg-color); }
 
-        /* ===== MAIN CONTENT & GRID ===== */
+        /* GRID VIDEO */
         #main { margin-top: 56px; padding-bottom: 70px; min-height: 100vh; }
         .video-grid { display: flex; flex-direction: column; gap: 0; }
         .vid-card { cursor: pointer; display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
-        .thumb-wrap { position: relative; width: 100%; aspect-ratio: 16/9; background: #272727; }
+        .thumb-wrap { position: relative; width: 100%; aspect-ratio: 16/9; background: var(--card-bg); }
         .thumb-img { width: 100%; height: 100%; object-fit: cover; }
         .duration-badge { position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.8); color: #fff; font-size: 12px; font-weight: 500; padding: 3px 6px; border-radius: 4px; }
         .vid-info { display: flex; gap: 12px; align-items: flex-start; padding: 0 16px; }
         .channel-avatar { width: 36px; height: 36px; border-radius: 50%; background: #444; flex-shrink: 0; overflow: hidden; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:bold; }
         .channel-avatar img { width: 100%; height: 100%; object-fit: cover; }
         .vid-text { flex: 1; }
-        .vid-title { font-size: 15px; font-weight: 500; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 4px; color: #fff; }
-        .vid-meta { font-size: 13px; color: #aaa; }
+        .vid-title { font-size: 15px; font-weight: 500; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 4px; color: var(--text-color); }
+        .vid-meta { font-size: 13px; color: var(--sub-text); }
+
+        /* ===== SHORTS FEED VERTIKAL (9:16) ===== */
+        .shorts-container { display: flex; flex-direction: column; gap: 24px; padding: 16px; align-items: center; }
+        .short-card { width: 100%; max-width: 360px; aspect-ratio: 9/16; background: #000; border-radius: 16px; position: relative; overflow: hidden; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        .short-card iframe { width: 100%; height: 100%; border: none; pointer-events: none; }
+        .short-overlay { position: absolute; bottom: 16px; left: 16px; right: 16px; color: #fff; z-index: 2; pointer-events: none; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
 
         /* ===== PLAYER SECTION ===== */
-        #player-section { display: none; margin-top: 0; padding-bottom: 70px; min-height: 100vh; background: inherit; z-index: 200; position: absolute; top: 0; left: 0; width: 100%; transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        #player-section { display: none; margin-top: 0; padding-bottom: 70px; min-height: 100vh; background: var(--bg-color); z-index: 200; position: absolute; top: 0; left: 0; width: 100%; transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
         .player-container { width: 100%; aspect-ratio: 16/9; background: #000; position: sticky; top: 0; z-index: 105; touch-action: none; }
         .player-container iframe { width: 100%; height: 100%; border: none; pointer-events: auto; }
-        
         .css-fullscreen { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; max-width: none !important; aspect-ratio: auto !important; z-index: 99999 !important; border-radius: 0 !important; background: #000; display: flex; align-items: center; justify-content: center; }
 
-        .player-meta { padding: 12px 16px; background: rgba(15,15,15,0.5); backdrop-filter: blur(5px); }
-        .player-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; line-height: 1.3; }
-        .player-views-date { font-size: 13px; color: #aaa; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+        .player-meta { padding: 12px 16px; background: var(--surface-color); backdrop-filter: blur(5px); }
+        .player-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; line-height: 1.3; color: var(--text-color); }
+        .player-views-date { font-size: 13px; color: var(--sub-text); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
         
-        .action-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 16px; scrollbar-width: none; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 16px; }
-        .action-pill { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; color: #fff; }
+        .action-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 16px; scrollbar-width: none; border-bottom: 1px solid var(--border-color); margin-bottom: 16px; }
+        .action-pill { display: flex; align-items: center; gap: 6px; background: var(--card-bg); padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; color: var(--text-color); }
         .action-pill .material-icons-outlined { font-size: 18px; }
         
         .channel-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
         .channel-info { display: flex; align-items: center; gap: 10px; }
-        .channel-name { font-weight: 500; font-size: 15px; color: #fff; }
-        .channel-subs { font-size: 12px; color: #aaa; }
-        .btn-subscribe { background: #fff; color: #000; font-weight: 500; border: none; padding: 8px 16px; border-radius: 20px; font-size: 14px; }
+        .channel-name { font-weight: 500; font-size: 15px; color: var(--text-color); }
+        .channel-subs { font-size: 12px; color: var(--sub-text); }
+        .btn-subscribe { background: var(--text-color); color: var(--bg-color); font-weight: 500; border: none; padding: 8px 16px; border-radius: 20px; font-size: 14px; cursor: pointer; transition: opacity 0.2s; }
+        .btn-subscribe.subscribed { background: var(--card-bg); color: var(--text-color); }
         
-        .comments-box { background: rgba(255,255,255,0.1); border-radius: 12px; padding: 12px 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500; }
+        .comments-box { background: var(--card-bg); border-radius: 12px; padding: 12px 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500; color: var(--text-color); cursor: pointer; }
 
         /* ===== MINI PLAYER ===== */
-        #mini-player { display: none; position: fixed; bottom: 50px; left: 0; right: 0; height: 56px; background: rgba(31,31,31,0.95); backdrop-filter: blur(10px); z-index: 99; align-items: center; padding: 0 12px; border-top: 1px solid rgba(255,255,255,0.1); }
+        #mini-player { display: none; position: fixed; bottom: 50px; left: 0; right: 0; height: 56px; background: var(--surface-color); backdrop-filter: blur(10px); z-index: 99; align-items: center; padding: 0 12px; border-top: 1px solid var(--border-color); }
         #mini-player.active { display: flex; animation: fadeIn 0.3s; }
         .mini-thumb { width: 80px; height: 45px; background: #000; margin-right: 12px; cursor: pointer; position: relative; flex-shrink: 0; }
         .mini-thumb img { width: 100%; height: 100%; object-fit: cover; }
         .mini-info { flex: 1; overflow: hidden; white-space: nowrap; cursor: pointer; }
-        .mini-title { font-size: 13px; font-weight: 500; color: #fff; text-overflow: ellipsis; overflow: hidden; margin-bottom: 2px; }
-        .mini-channel { font-size: 11px; color: #aaa; text-overflow: ellipsis; overflow: hidden; }
-        .mini-actions { display: flex; align-items: center; gap: 12px; color: #fff; }
+        .mini-title { font-size: 13px; font-weight: 500; color: var(--text-color); text-overflow: ellipsis; overflow: hidden; margin-bottom: 2px; }
+        .mini-channel { font-size: 11px; color: var(--sub-text); text-overflow: ellipsis; overflow: hidden; }
+        .mini-actions { display: flex; align-items: center; gap: 12px; color: var(--text-color); }
         .mini-actions .material-icons { font-size: 26px; cursor: pointer; }
 
         /* ===== BOTTOM NAV ===== */
-        #bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 50px; background: rgba(15,15,15,0.9); backdrop-filter: blur(10px); z-index: 100; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); }
-        .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; flex: 1; height: 100%; cursor: pointer; opacity: 0.7; }
-        .nav-item.active { opacity: 1; color: #fff; }
+        #bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 50px; background: var(--surface-color); backdrop-filter: blur(10px); z-index: 100; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid var(--border-color); }
+        .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-color); flex: 1; height: 100%; cursor: pointer; opacity: 0.7; }
+        .nav-item.active { opacity: 1; color: var(--text-color); }
         .nav-item.active .material-icons-outlined { display: none; }
         .nav-item:not(.active) .material-icons { display: none; }
         .nav-item .material-icons, .nav-item .material-icons-outlined { font-size: 24px; }
         .nav-item .nav-label { font-size: 10px; margin-top: 3px; }
-        
-        .nav-avatar { width: 24px; height: 24px; border-radius: 50%; background: #ff4e45; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; border: 2px solid transparent; }
-        .nav-item.active .nav-avatar { border-color: #fff; }
+        .nav-avatar { width: 24px; height: 24px; border-radius: 50%; background: #ff4e45; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; border: 2px solid transparent; color: #fff; }
+        .nav-item.active .nav-avatar { border-color: var(--text-color); }
 
         /* ===== BOTTOM SHEET PENGATURAN ===== */
         #sheet-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; opacity: 0; transition: opacity 0.3s; }
         #sheet-overlay.show { display: block; opacity: 1; }
-        #settings-sheet { display: flex; flex-direction: column; position: fixed; bottom: -100%; left: 0; right: 0; background: #212121; border-radius: 16px 16px 0 0; z-index: 10000; transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1); padding-bottom: 24px; max-height: 80vh; overflow-y: auto; }
+        #settings-sheet { display: flex; flex-direction: column; position: fixed; bottom: -100%; left: 0; right: 0; background: var(--bg-color); border-top: 1px solid var(--border-color); border-radius: 16px 16px 0 0; z-index: 10000; transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1); padding-bottom: 24px; max-height: 80vh; overflow-y: auto; color: var(--text-color); }
         #settings-sheet.show { bottom: 0; }
-        .sheet-handle { width: 40px; height: 4px; background: #555; border-radius: 2px; margin: 12px auto 8px; }
-        .setting-item { display: flex; align-items: center; gap: 16px; padding: 14px 24px; color: #f1f1f1; font-size: 15px; cursor: pointer; transition: background 0.2s; }
-        .setting-item:hover { background: rgba(255,255,255,0.1); }
-        .setting-item .material-icons-outlined { font-size: 24px; color: #f1f1f1; }
+        .sheet-handle { width: 40px; height: 4px; background: var(--sub-text); border-radius: 2px; margin: 12px auto 8px; }
+        .setting-item { display: flex; align-items: center; gap: 16px; padding: 14px 24px; color: var(--text-color); font-size: 15px; cursor: pointer; transition: background 0.2s; }
+        .setting-item:hover { background: rgba(128,128,128,0.1); }
+        .setting-item .material-icons-outlined { font-size: 24px; color: var(--text-color); }
         
         #scroll-loader { display: none; justify-content: center; padding: 20px 0; }
-        .spinner { width: 30px; height: 30px; border: 3px solid #333; border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
+        .spinner { width: 30px; height: 30px; border: 3px solid var(--card-bg); border-top-color: var(--text-color); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
+
+<div id="toast">Pesan notifikasi</div>
 
 <header id="header">
     <div class="header-left" onclick="goHome(event)">
         <div class="yt-logo-box"></div>
         <span class="yt-logo-text">YouTube</span>
     </div>
-
     <div class="header-right">
         <button class="header-icon" onclick="toggleSearch(true)"><span class="material-icons-outlined">search</span></button>
-        <button class="header-icon"><span class="material-icons-outlined">mic</span></button>
-        <button class="header-icon"><span class="material-icons-outlined">more_vert</span></button>
+        <button class="header-icon" onclick="showToast('Fitur suara belum tersedia')"><span class="material-icons-outlined">mic</span></button>
+        <button class="header-icon" onclick="openSettings()"><span class="material-icons-outlined">more_vert</span></button>
     </div>
     
-    <!-- Formulir & Rekomendasi Pencarian Realtime -->
     <div class="search-form-mobile" id="mobile-search-form">
         <div class="search-top-bar">
             <button type="button" class="header-icon" onclick="toggleSearch(false)"><span class="material-icons-outlined">arrow_back</span></button>
             <div class="search-input-wrap-mob">
-                <input type="text" id="keyword-mobile" placeholder="Telusuri YouTube" autocomplete="off" oninput="fetchSuggestions(this.value)">
+                <input type="text" id="keyword-mobile" placeholder="Telusuri YouTube" autocomplete="off" oninput="debounceFetchSuggestions(this.value)">
             </div>
-            <button type="button" class="header-icon" style="background:#222;" onclick="submitSearch()"><span class="material-icons-outlined" style="font-size:20px;">search</span></button>
+            <button type="button" class="header-icon" style="background:var(--card-bg);" onclick="submitSearch()"><span class="material-icons-outlined" style="font-size:20px;">search</span></button>
         </div>
         <div class="search-suggestions-list" id="suggestions-list"></div>
     </div>
@@ -210,7 +226,7 @@ HTML_TEMPLATE = """
 
 <main id="main">
     <div class="chips-wrapper" id="chips-container">
-        <div class="explore-icon"><span class="material-icons-outlined" style="font-size: 20px;">explore</span></div>
+        <div class="explore-icon" onclick="loadTrending()"><span class="material-icons-outlined" style="font-size: 20px;">explore</span></div>
         <div class="chips-bar">
             <button class="chip active" onclick="chipClick(this,'')">Semua</button>
             <button class="chip" onclick="chipClick(this,'Musik')">Musik</button>
@@ -239,10 +255,10 @@ HTML_TEMPLATE = """
         <div class="action-row">
             <div class="action-pill" onclick="openSettings()"><span class="material-icons-outlined">settings</span> Pengaturan</div>
             <div class="action-pill" onclick="toggleCustomFullscreen()"><span class="material-icons-outlined" id="fs-icon">fullscreen</span> Perbesar</div>
-            <div class="action-pill"><span class="material-icons-outlined">share</span> Bagikan</div>
-            <div class="action-pill"><span class="material-icons-outlined">download</span> Unduh</div>
+            <div class="action-pill" onclick="shareVideo()"><span class="material-icons-outlined">share</span> Bagikan</div>
+            <div class="action-pill" onclick="downloadVideo()"><span class="material-icons-outlined">download</span> Unduh</div>
             <div class="action-pill" onclick="saveTontonNanti()"><span class="material-icons-outlined">playlist_add</span> Simpan</div>
-            <div class="action-pill"><span class="material-icons-outlined">headphones</span> Audio</div>
+            <div class="action-pill" onclick="showToast('Mode audio aktif')"><span class="material-icons-outlined">headphones</span> Audio</div>
         </div>
         
         <div class="channel-row">
@@ -250,14 +266,14 @@ HTML_TEMPLATE = """
                 <img id="player-channel-avatar" src="" style="width:36px; height:36px; border-radius:50%; object-fit:cover; background:#444;">
                 <div>
                     <div class="channel-name" id="player-channel-name">Nama Channel</div>
-                    <div class="channel-subs">1,2 jt pelanggan</div>
+                    <div class="channel-subs" id="player-subs-count">1,2 jt pelanggan</div>
                 </div>
             </div>
-            <button class="btn-subscribe">Berlangganan</button>
+            <button class="btn-subscribe" id="subscribe-btn" onclick="toggleSubscribe()">Berlangganan</button>
         </div>
         
-        <div class="comments-box">
-            <span>Komentar</span>
+        <div class="comments-box" onclick="showToast('Kolom komentar disembunyikan pemilik video')">
+            <span>Komentar (244)</span>
             <span class="material-icons-outlined">unfold_more</span>
         </div>
         
@@ -266,22 +282,19 @@ HTML_TEMPLATE = """
     </div>
 </div>
 
-<!-- Bottom Sheet Pengaturan -->
+<!-- Bottom Sheet Pengaturan & Lainnya -->
 <div id="sheet-overlay" onclick="closeSettings()"></div>
 <div id="settings-sheet">
     <div class="sheet-handle"></div>
     <div id="main-settings">
-        <div class="setting-item" onclick="alert('Mode ulang diaktifkan')"><span class="material-icons-outlined">repeat</span> Mode ulang (Tidak diulang)</div>
-        <div class="setting-item" onclick="alert('Ubah ukuran segera hadir')"><span class="material-icons-outlined">aspect_ratio</span> Mode ubah ukuran (Pas)</div>
-        <div class="setting-item" onclick="alert('Kecepatan 1.5x diaktifkan')"><span class="material-icons-outlined">speed</span> Kecepatan pemutaran (1.0x)</div>
-        <div class="setting-item" onclick="alert('Pewaktu dimatikan')"><span class="material-icons-outlined">dark_mode</span> Pewaktu tidur (Mati)</div>
+        <div class="setting-item" onclick="toggleTheme()"><span class="material-icons-outlined">brightness_6</span> Ganti Tema (Terang / Gelap)</div>
+        <div class="setting-item" onclick="showToast('Mode ulang otomatis aktif')"><span class="material-icons-outlined">repeat</span> Mode ulang (Tidak diulang)</div>
         <div class="setting-item" onclick="showQualitySettings()"><span class="material-icons-outlined">hd</span> Kualitas (<span id="current-quality">Otomatis</span>)</div>
-        <div class="setting-item" onclick="alert('Audio default')"><span class="material-icons-outlined">music_note</span> Trek audio (Indonesia - asli atau utama)</div>
-        <div class="setting-item" onclick="alert('Takarir dimatikan')"><span class="material-icons-outlined">closed_caption</span> Takarir (Tidak ada)</div>
-        <div class="setting-item" onclick="alert('Statistik dibuka')"><span class="material-icons-outlined">info</span> Statistik untuk kutu buku</div>
+        <div class="setting-item" onclick="showToast('Takarir disetel ke Otomatis')"><span class="material-icons-outlined">closed_caption</span> Takarir (Indonesia)</div>
+        <div class="setting-item" onclick="closeSettings()"><span class="material-icons-outlined">close</span> Tutup Menu</div>
     </div>
     <div id="quality-settings" style="display:none;">
-        <div class="setting-item" onclick="showMainSettings()" style="border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom:8px;"><span class="material-icons-outlined">arrow_back</span> Kembali</div>
+        <div class="setting-item" onclick="showMainSettings()" style="border-bottom: 1px solid var(--border-color); margin-bottom:8px;"><span class="material-icons-outlined">arrow_back</span> Kembali</div>
         <div class="setting-item" onclick="setQuality(1080)">1080p Premium HD</div>
         <div class="setting-item" onclick="setQuality(720)">720p HD</div>
         <div class="setting-item" onclick="setQuality(480)">480p</div>
@@ -313,15 +326,15 @@ HTML_TEMPLATE = """
         <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M17.77,10.32l-1.2-.5L18,9.06a3.74,3.74,0,0,0-3.5-6.62L6,6.94a3.74,3.74,0,0,0,.23,6.74l1.2.49L6,14.93a3.75,3.75,0,0,0,3.5,6.63l8.5-4.5a3.74,3.74,0,0,0-.23-6.74ZM10,14.65V9.35L14.75,12Z"/></svg>
         <span class="nav-label">Shorts</span>
     </div>
-    <div class="nav-item">
+    <div class="nav-item" onclick="loadSubscriptions(this)">
         <span class="material-icons-outlined">subscriptions</span><span class="material-icons">subscriptions</span>
         <span class="nav-label">Langganan</span>
     </div>
-    <div class="nav-item">
+    <div class="nav-item" onclick="loadTrendingNav(this)">
         <span class="material-icons-outlined">trending_up</span><span class="material-icons">trending_up</span>
         <span class="nav-label">Trending</span>
     </div>
-    <div class="nav-item">
+    <div class="nav-item" onclick="loadProfile(this)">
         <div class="nav-avatar">Y</div>
         <span class="nav-label">Anda</span>
     </div>
@@ -333,11 +346,39 @@ HTML_TEMPLATE = """
     let isLoadingMore = false;
     let currentPlayingVideoStr = ''; 
     let activeData = [];
-    
+    let debounceTimer = null;
+    let isSubscribed = false;
+
     window.addEventListener('DOMContentLoaded', () => { 
         loadHome(); 
         history.pushState({page: 'home'}, '', '');
+        const savedTheme = localStorage.getItem('yt_theme');
+        if(savedTheme) {
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        }
     });
+
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    function toggleTheme() {
+        const current = document.documentElement.getAttribute('data-theme');
+        const next = current === 'light' ? 'dark' : 'light';
+        if(next === 'light') {
+            document.documentElement.setAttribute('data-theme', 'light');
+            localStorage.setItem('yt_theme', 'light');
+            showToast('Mode terang diaktifkan');
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+            localStorage.setItem('yt_theme', 'dark');
+            showToast('Mode gelap diaktifkan');
+        }
+        closeSettings();
+    }
     
     window.addEventListener('popstate', (e) => {
         const sheet = document.getElementById('settings-sheet');
@@ -359,7 +400,7 @@ HTML_TEMPLATE = """
     });
 
     window.addEventListener('scroll', () => {
-        if (!isLoadingMore && document.getElementById('main').style.display !== 'none') {
+        if (!isLoadingMore && document.getElementById('main').style.display !== 'none' && currentQuery !== 'shorts') {
             if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 300) {
                 loadMoreData();
             }
@@ -374,7 +415,9 @@ HTML_TEMPLATE = """
             const res = await fetch('/api/home'); 
             activeData = await res.json(); 
             renderGrid(activeData); 
-        } catch(e){}
+        } catch(e) {
+            showToast('Gagal memuat beranda. Periksa koneksi Anda.');
+        }
     }
 
     async function loadMoreData() {
@@ -405,7 +448,14 @@ HTML_TEMPLATE = """
         }
     }
 
-    // Mengambil Saran Pencarian Realtime dari Backend
+    // Debounce Search Suggestions
+    function debounceFetchSuggestions(keyword) {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            fetchSuggestions(keyword);
+        }, 300);
+    }
+
     async function fetchSuggestions(keyword) {
         const listContainer = document.getElementById('suggestions-list');
         if (!keyword.trim()) {
@@ -450,7 +500,7 @@ HTML_TEMPLATE = """
             showSkeletons();
             fetch('/api/search?q=' + encodeURIComponent(q)).then(r=>r.json()).then(d => { 
                 currentOffset=d.length; activeData = d; renderGrid(d); 
-            });
+            }).catch(() => showToast('Pencarian gagal'));
         }
     }
 
@@ -460,14 +510,19 @@ HTML_TEMPLATE = """
         else loadHome();
     }
 
+    function loadTrending() {
+        document.getElementById('chips-container').style.display = 'flex';
+        showSkeletons();
+        currentQuery = 'trending';
+        fetch('/api/trending').then(r=>r.json()).then(d => { activeData=d; renderGrid(d); }).catch(() => showToast('Gagal memuat trending'));
+    }
+
     function activateNav(el) {
         if(!el) return;
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
         el.classList.add('active');
-        
         document.getElementById('main').style.display = 'block';
         document.getElementById('player-section').style.display = 'none';
-        
         if(currentPlayingVideoStr) {
             document.getElementById('mini-player').classList.add('active');
         }
@@ -481,12 +536,67 @@ HTML_TEMPLATE = """
         if(currentQuery !== '') loadHome(); 
     }
     
+    // Tampilan Khusus Shorts (Vertical 9:16 Feed)
     function loadShorts(el) {
         activateNav(el);
         document.getElementById('chips-container').style.display = 'none';
         showSkeletons();
         currentQuery = 'shorts'; 
-        fetch('/api/shorts').then(r=>r.json()).then(d => { activeData=d; renderGrid(d); });
+        fetch('/api/shorts').then(r=>r.json()).then(d => { 
+            activeData = d; 
+            renderShortsGrid(d); 
+        }).catch(() => showToast('Gagal memuat Shorts'));
+    }
+
+    function renderShortsGrid(data) {
+        const g = document.getElementById('video-grid');
+        g.innerHTML = '';
+        const container = document.createElement('div');
+        container.className = 'shorts-container';
+        data.forEach(v => {
+            const card = document.createElement('div');
+            card.className = 'short-card fade-in';
+            card.onclick = () => playVideo(encodeURIComponent(JSON.stringify(v)));
+            card.innerHTML = `
+                <iframe src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=0&controls=0&loop=1&mute=1"></iframe>
+                <div class="short-overlay">
+                    <div style="font-weight:700; font-size:14px; margin-bottom:6px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${v.title}</div>
+                    <div style="font-size:12px; opacity:0.8;">${v.channel || 'Shorts Creator'}</div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+        g.appendChild(container);
+    }
+
+    function loadSubscriptions(el) {
+        activateNav(el);
+        document.getElementById('chips-container').style.display = 'none';
+        let subs = JSON.parse(localStorage.getItem('yt_subscriptions') || '[]');
+        if(subs.length === 0) {
+            document.getElementById('video-grid').innerHTML = '<div style="text-align:center; padding:40px; color:var(--sub-text);">Belum ada channel yang diikuti. Klik "Berlangganan" pada video untuk menambahkan.</div>';
+        } else {
+            renderGrid(subs);
+        }
+    }
+
+    function loadTrendingNav(el) {
+        activateNav(el);
+        document.getElementById('chips-container').style.display = 'none';
+        loadTrending();
+    }
+
+    function loadProfile(el) {
+        activateNav(el);
+        document.getElementById('chips-container').style.display = 'none';
+        let wl = JSON.parse(localStorage.getItem('yt_watch_later') || '[]');
+        let html = '<div style="padding:16px;"><h2 style="margin-bottom:16px;">Tonton Nanti ('+wl.length+')</h2>';
+        if(wl.length === 0) {
+            html += '<p style="color:var(--sub-text);">Belum ada video tersimpan.</p>';
+        }
+        html += '</div>';
+        document.getElementById('video-grid').innerHTML = html;
+        if(wl.length > 0) appendToGrid(wl, 'video-grid');
     }
 
     function saveTontonNanti() {
@@ -496,9 +606,51 @@ HTML_TEMPLATE = """
             let wl = JSON.parse(localStorage.getItem('yt_watch_later') || '[]');
             if(!wl.find(x => x.id === v.id)) {
                 wl.unshift(v); localStorage.setItem('yt_watch_later', JSON.stringify(wl));
-                alert('Tersimpan di playlist');
+                showToast('Disimpan ke Tonton Nanti');
+            } else {
+                showToast('Video sudah ada di playlist');
             }
         } catch(e){}
+    }
+
+    function toggleSubscribe() {
+        isSubscribed = !isSubscribed;
+        const btn = document.getElementById('subscribe-btn');
+        let subs = JSON.parse(localStorage.getItem('yt_subscriptions') || '[]');
+        if(currentPlayingVideoStr) {
+            let v = JSON.parse(decodeURIComponent(currentPlayingVideoStr));
+            if(isSubscribed) {
+                btn.textContent = 'Berlangganan';
+                btn.classList.add('subscribed');
+                if(!subs.find(x => x.id === v.id)) subs.unshift(v);
+                showToast('Berhasil Berlangganan');
+            } else {
+                btn.textContent = 'Berlangganan';
+                btn.classList.remove('subscribed');
+                subs = subs.filter(x => x.id !== v.id);
+                showToast('Berhenti Berlangganan');
+            }
+            localStorage.setItem('yt_subscriptions', JSON.stringify(subs));
+        }
+    }
+
+    function shareVideo() {
+        if(!currentPlayingVideoStr) return;
+        let v = JSON.parse(decodeURIComponent(currentPlayingVideoStr));
+        const url = `https://youtu.be/${v.id}`;
+        if (navigator.share) {
+            navigator.share({ title: v.title, url: url }).catch(() => {});
+        } else {
+            navigator.clipboard.writeText(url);
+            showToast('Tautan disalin ke clipboard');
+        }
+    }
+
+    function downloadVideo() {
+        if(!currentPlayingVideoStr) return;
+        let v = JSON.parse(decodeURIComponent(currentPlayingVideoStr));
+        window.open(`https://www.ssyoutube.com/watch?v=${v.id}`, '_blank');
+        showToast('Mengarahkan ke pengunduh eksternal');
     }
 
     function openSettings() {
@@ -526,22 +678,14 @@ HTML_TEMPLATE = """
     
     function setQuality(res) {
         document.getElementById('current-quality').textContent = res + 'p';
-        const iframe = document.querySelector('#player-box iframe');
-        if(iframe) {
-            let src = iframe.src;
-            src = src.split('&vq=')[0];
-            iframe.src = src + '&vq=' + res;
-        }
         closeSettings();
-        alert('Kualitas video diatur ke ' + res + 'p');
+        showToast('Kualitas video diatur ke ' + res + 'p');
     }
 
     function toggleCustomFullscreen() {
         const box = document.getElementById('player-container-box');
         const icon = document.getElementById('fs-icon');
-        
         box.classList.toggle('css-fullscreen');
-        
         if(box.classList.contains('css-fullscreen')) {
             icon.textContent = 'fullscreen_exit';
             document.body.style.overflow = 'hidden';
@@ -554,10 +698,8 @@ HTML_TEMPLATE = """
     function playVideo(videoStr) {
         let v; try { v = JSON.parse(decodeURIComponent(videoStr)); } catch(e){ return; }
         currentPlayingVideoStr = videoStr; 
-        
         document.getElementById('main').style.display = 'none';
         document.getElementById('mini-player').classList.remove('active');
-        
         document.getElementById('player-container-box').classList.remove('css-fullscreen');
         document.getElementById('fs-icon').textContent = 'fullscreen';
         document.body.style.overflow = '';
@@ -566,7 +708,7 @@ HTML_TEMPLATE = """
         ps.style.transition = 'none';
         ps.style.transform = 'translateY(0)';
         document.getElementById('player-title').textContent = v.title;
-        document.getElementById('player-channel-name').textContent = v.channel || 'YouTube Music';
+        document.getElementById('player-channel-name').textContent = v.channel || 'YouTube Creator';
         document.getElementById('player-channel-avatar').src = v.avatar || '';
         document.getElementById('player-views').textContent = (v.views || '123 rb tampilan') + ' • ' + (v.published || 'Baru saja');
         
@@ -647,8 +789,7 @@ HTML_TEMPLATE = """
         } else {
             playerSec.style.transform = 'translateY(0)';
         }
-        startY = 0;
-        currentY = 0;
+        startY = 0; currentY = 0;
     });
 
     function showSkeletons() { 
@@ -708,71 +849,62 @@ def extract_video_data(video):
         if byline:
             run = byline.get("runs", [{}])[0]
             data["channel"] = run.get("text", "")
-            data["channelUrl"] = run.get("navigationEndpoint", {}).get("commandMetadata", {}).get("webCommandMetadata", {}).get("url", "")
     except Exception: 
-        data["channel"] = ""; data["channelUrl"] = ""
+        data["channel"] = ""
     try:
         avatar_thumbs = video.get("channelThumbnailSupportedRenderers", {}).get("channelThumbnailWithLinkRenderer", {}).get("thumbnail", {}).get("thumbnails", [])
         if avatar_thumbs: data["avatar"] = avatar_thumbs[0].get("url", "")
     except Exception: 
         data["avatar"] = ""
-    try:
-        desc_runs = video.get("detailedMetadataSnippets", [{}])[0].get("snippetText", {}).get("runs", [])
-        if not desc_runs: desc_runs = video.get("descriptionSnippet", {}).get("runs", [])
-        data["description"] = "".join([r.get("text", "") for r in desc_runs]) if desc_runs else ""
-    except Exception: data["description"] = ""
     return data
 
 @app.route("/")
 def home(): return render_template_string(HTML_TEMPLATE)
 
-# Route Backend untuk Menarik Saran Pencarian Realtime ala YouTube
 @app.route("/api/suggestions")
 def api_suggestions():
     query = request.args.get("q", "").strip()
     suggestions = []
-    if not query:
-        return jsonify(suggestions)
+    if not query: return jsonify(suggestions)
     try:
         url = f"http://suggestqueries.google.com/complete/search?client=youtube&ds=yt&q={urllib.request.quote(query)}"
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req) as response:
             data = response.read().decode('latin1')
-            # Format respons google suggest biasanya: window.google.ac.h([...])
             start = data.find('([')
             end = data.rfind('])')
             if start != -1 and end != -1:
-                json_str = data[start+1:end+1]
-                parsed = json.loads(json_str)
+                parsed = json.loads(data[start+1:end+1])
                 for item in parsed:
                     if isinstance(item, list):
                         for sub in item:
                             if isinstance(sub, list) and len(sub) > 0 and isinstance(sub[0], str):
                                 suggestions.append(sub[0])
-    except Exception:
-        pass
-    return jsonify(suggestions[:12])
+    except Exception: pass
+    return jsonify(suggestions[:10])
 
 @app.route("/api/home")
 def api_home():
     results = []
     try:
-        base_keywords = ["Viral 2024", "Hits Indonesia", "Populer Hari Ini", "Trending Video", "Podcast Indonesia terbaru", "Gaming Indonesia"]
+        base_keywords = ["Viral", "Hits Indonesia", "Populer Hari Ini", "Trending Video", "Podcast Terbaru", "Gaming"]
         random_keyword = random.choice(base_keywords)
-        
-        videos = scrapetube.get_search(random_keyword, limit=30)
+        videos = scrapetube.get_search(random_keyword, limit=25)
         for v in videos:
             d = extract_video_data(v)
             if d.get("id"): results.append(d)
-                
-        try:
-            trending = scrapetube.get_trending("ID", limit=10)
-            for v in trending:
-                d = extract_video_data(v)
-                if d.get("id") and not any(r["id"] == d["id"] for r in results): results.insert(random.randint(0, 10), d)
-        except: pass
-            
         random.shuffle(results)
+    except Exception: pass
+    return jsonify(results)
+
+@app.route("/api/trending")
+def api_trending():
+    results = []
+    try:
+        videos = scrapetube.get_trending("ID", limit=25)
+        for v in videos:
+            d = extract_video_data(v)
+            if d.get("id"): results.append(d)
     except Exception: pass
     return jsonify(results)
 
@@ -780,14 +912,20 @@ def api_home():
 def api_search():
     query = request.args.get("q", "").strip()
     offset = int(request.args.get("offset", 0))
-    limit = 20; results = []
+    limit = 15; results = []
     if not query: return jsonify(results)
+    
+    cache_key = f"{query}_{offset}"
+    if cache_key in search_cache:
+        return jsonify(search_cache[cache_key])
+
     try:
         videos = scrapetube.get_search(query, limit=offset+limit)
         for i, v in enumerate(videos):
             if i >= offset:
                 d = extract_video_data(v)
                 if d.get("id"): results.append(d)
+        search_cache[cache_key] = results
     except Exception: pass
     return jsonify(results)
 
@@ -795,7 +933,7 @@ def api_search():
 def api_shorts():
     results = []
     try:
-        videos = scrapetube.get_search("shorts viral #shorts", limit=60)
+        videos = scrapetube.get_search("shorts viral #shorts", limit=40)
         for v in videos:
             d = extract_video_data(v); dur_text = d.get("duration", ""); is_short = False
             if dur_text:
@@ -804,7 +942,7 @@ def api_shorts():
                 elif len(parts) == 2 and int(parts[0]) == 0 and int(parts[1]) <= 60: is_short = True
             if is_short and d.get("id"):
                 if not any(r["id"] == d["id"] for r in results): results.append(d)
-            if len(results) >= 20: break
+            if len(results) >= 12: break
     except Exception: pass
     return jsonify(results)
 
