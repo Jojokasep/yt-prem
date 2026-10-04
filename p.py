@@ -84,15 +84,12 @@ HTML_TEMPLATE = """
         #toast.show { transform: translateX(-50%) translateY(0); }
 
         #header { position: fixed; top: 0; left: 0; right: 0; height: 56px; background: var(--surface-color); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 100; border-bottom: 1px solid var(--border-color); }
-        .header-left { display: flex; align-items: center; gap: 6px; cursor: pointer; }
-        .yt-logo-box { display: flex; align-items: center; background: #ff0000; width: 30px; height: 20px; border-radius: 5px; justify-content: center; position: relative; }
-        .yt-logo-box::after { content: ""; position: absolute; width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 9px solid #fff; left: 11px; }
+        .header-left { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+        .yt-logo-box { display: flex; align-items: center; background: #ff0000; width: 32px; height: 22px; border-radius: 5px; justify-content: center; position: relative; flex-shrink: 0; }
+        .yt-logo-box::after { content: ""; position: absolute; width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 9px solid #fff; left: 12px; }
         
-        /* Desain Logo YouTube Premium Persis Asli */
-        .yt-logo-container { display: flex; flex-direction: column; line-height: 1; }
-        .yt-logo-row { display: flex; align-items: center; gap: 4px; }
-        .yt-logo-text { font-size: 18px; font-weight: 700; letter-spacing: -1px; color: var(--text-color); }
-        .yt-premium-tag { font-size: 9px; font-weight: 700; background: #ff0000; color: #fff; padding: 1px 4px; border-radius: 2px; letter-spacing: 0.5px; margin-top: -2px; align-self: flex-start; }
+        /* Logo YouTube Premium persis seperti gambar referensi */
+        .yt-logo-text-img { font-size: 20px; font-weight: 700; letter-spacing: -0.8px; color: var(--text-color); font-family: 'Roboto', sans-serif; }
         
         .header-right { display: flex; align-items: center; gap: 8px; }
         .header-icon { background: transparent; border: none; color: var(--text-color); display: flex; align-items: center; justify-content: center; cursor: pointer; width: 40px; height: 40px; border-radius: 50%; }
@@ -240,10 +237,7 @@ HTML_TEMPLATE = """
 <header id="header">
     <div class="header-left" onclick="goHome(event)">
         <div class="yt-logo-box"></div>
-        <div class="yt-logo-container">
-            <span class="yt-logo-text">YouTube</span>
-            <span class="yt-premium-tag">PREMIUM</span>
-        </div>
+        <span class="yt-logo-text-img">Premium</span>
     </div>
     <div class="header-right">
         <button class="header-icon" onclick="toggleSearch(true)"><span class="material-icons-outlined">search</span></button>
@@ -356,7 +350,7 @@ HTML_TEMPLATE = """
         <div id="mini-video-slot" style="width:100%; height:100%;"></div>
     </div>
     <div class="floating-controls">
-        <span class="material-icons" id="mini-play-icon" onclick="toggleMiniPlay(event)">pause</span>
+        <span class="material-icons" id="mini-play-icon" onclick="toggleMiniPlay(event)">play_arrow</span>
         <span class="material-icons" onclick="closeMiniPlayer()">close</span>
     </div>
 </div>
@@ -849,14 +843,14 @@ HTML_TEMPLATE = """
         if (isMiniPlaying) {
             isMiniPlaying = false;
             icon.textContent = 'play_arrow';
-            // Membersihkan elemen iframe secara total agar audio dan video benar-benar berhenti (stop)
-            miniSlot.innerHTML = `<div style="width:100%;height:100%;background:#111;display:flex;align-items:center;justify-content:center;"><span class="material-icons" style="color:#fff;font-size:24px;">play_arrow</span></div>`;
+            // Membersihkan iframe sepenuhnya agar audio/video benar-benar mati total
+            miniSlot.innerHTML = '';
             showToast('Video dijeda');
         } else {
             isMiniPlaying = true;
             icon.textContent = 'pause';
             if (activeVideoId) {
-                // Memuat ulang iframe saat tombol play ditekan kembali
+                // Memuat ulang iframe saat tombol play diklik
                 miniSlot.innerHTML = `<iframe id="mini-yt-iframe" src="https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&controls=0&mute=0&rel=0&playsinline=1" allow="autoplay"></iframe>`;
             }
             showToast('Video dilanjutkan');
