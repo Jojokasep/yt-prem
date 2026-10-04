@@ -301,7 +301,6 @@ HTML_TEMPLATE = """
         <div class="action-row">
             <div class="action-pill" onclick="openSettings()"><span class="material-icons-outlined">settings</span> Pengaturan</div>
             <div class="action-pill" onclick="toggleCustomFullscreen()"><span class="material-icons-outlined" id="fs-icon">fullscreen</span> Perbesar</div>
-            <!-- Tombol Mini Player ditambahkan di sini agar mudah diklik -->
             <div class="action-pill" onclick="minimizePlayerToMini()"><span class="material-icons-outlined">picture_in_picture_alt</span> Mini Player</div>
             <div class="action-pill" onclick="shareVideo()"><span class="material-icons-outlined">share</span> Bagikan</div>
             <div class="action-pill" onclick="downloadVideo()"><span class="material-icons-outlined">download</span> Unduh</div>
@@ -834,7 +833,7 @@ HTML_TEMPLATE = """
         document.getElementById('related-grid').innerHTML = '';
         appendToGrid(related, 'related-grid');
 
-        document.getElementById('mini-video-slot').innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&controls=0&mute=0&rel=0&playsinline=1" allow="autoplay"></iframe>`;
+        document.getElementById('mini-video-slot').innerHTML = `<iframe id="mini-yt-iframe" src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&controls=0&mute=0&rel=0&playsinline=1" allow="autoplay"></iframe>`;
         document.getElementById('mini-play-icon').textContent = 'pause';
 
         window.scrollTo(0,0);
@@ -843,21 +842,19 @@ HTML_TEMPLATE = """
     function toggleMiniPlay(e) {
         e.stopPropagation();
         const icon = document.getElementById('mini-play-icon');
-        const playerBox = document.getElementById('player-box');
         const miniSlot = document.getElementById('mini-video-slot');
         
         if (isMiniPlaying) {
             isMiniPlaying = false;
             icon.textContent = 'play_arrow';
-            playerBox.innerHTML = '';
-            miniSlot.innerHTML = '';
+            // Menampilkan layar jeda tanpa mereset total iframe dari server YouTube
+            miniSlot.innerHTML = `<div style="width:100%;height:100%;background:#111;display:flex;align-items:center;justify-content:center;"><span class="material-icons" style="color:#fff;font-size:24px;">play_arrow</span></div>`;
             showToast('Video dijeda');
         } else {
             isMiniPlaying = true;
             icon.textContent = 'pause';
             if (activeVideoId) {
-                playerBox.innerHTML = `<iframe id="yt-iframe" src="https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&rel=0&fs=0&iv_load_policy=3&modestbranding=1" allow="autoplay"></iframe>`;
-                miniSlot.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&controls=0&mute=0&rel=0&playsinline=1" allow="autoplay"></iframe>`;
+                miniSlot.innerHTML = `<iframe id="mini-yt-iframe" src="https://www.youtube-nocookie.com/embed/${activeVideoId}?autoplay=1&controls=0&mute=0&rel=0&playsinline=1" allow="autoplay"></iframe>`;
             }
             showToast('Video dilanjutkan');
         }
