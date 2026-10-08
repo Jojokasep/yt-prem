@@ -13,21 +13,25 @@ HTML_TEMPLATE = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0f0f0f">
     <title>YouTube Premium Clone</title>
-    <link rel="manifest" href="/manifest.json?v=5">
+    <link rel="manifest" href="/manifest.json?v=7">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto', Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
-        body { background: #0f0f0f; color: #f1f1f1; overflow-x: hidden; }
+        
+        /* Dynamic Theme Styles */
+        body { background-color: #0f0f0f; color: #f1f1f1; overflow-x: hidden; background-size: cover; background-position: center; background-attachment: fixed; }
+        body::before { content: ""; position: fixed; inset: 0; background: var(--bg-overlay, rgba(15, 15, 15, 0.92)); z-index: -1; transition: background 0.3s; }
+
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #717171; border-radius: 4px; }
         a { text-decoration: none; color: inherit; }
 
         /* ===== HEADER ===== */
-        #header { position: fixed; top: 0; left: 0; right: 0; height: 56px; background: #0f0f0f; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 100; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        #header { position: fixed; top: 0; left: 0; right: 0; height: 56px; background: var(--header-bg, #0f0f0f); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 100; border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.3s; }
         .header-left { display: flex; align-items: center; gap: 16px; }
         .yt-logo { display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; }
         .yt-logo-text { font-size: 20px; font-weight: 700; letter-spacing: -1px; margin-left: 2px; }
@@ -39,19 +43,19 @@ HTML_TEMPLATE = """
         
         /* Search Form Desktop */
         .search-form-desktop { display: flex; flex: 1; max-width: 600px; align-items: center; margin: 0 40px; }
-        .search-input-wrap-desk { flex: 1; display: flex; align-items: center; border: 1px solid #303030; border-right: none; border-radius: 20px 0 0 20px; background: #121212; height: 40px; padding: 0 16px; }
+        .search-input-wrap-desk { flex: 1; display: flex; align-items: center; border: 1px solid #303030; border-right: none; border-radius: 20px 0 0 20px; background: rgba(18,18,18,0.8); height: 40px; padding: 0 16px; }
         .search-input-wrap-desk input { width: 100%; background: transparent; border: none; color: #fff; font-size: 16px; outline: none; }
         .search-btn-desk { height: 40px; width: 64px; border: 1px solid #303030; border-radius: 0 20px 20px 0; background: #222; color: #fff; cursor: pointer; }
         
         /* Search Form Mobile */
-        .search-form-mobile { display: none; position: absolute; inset: 0; background: #0f0f0f; padding: 0 12px; align-items: center; gap: 12px; z-index: 110; }
+        .search-form-mobile { display: none; position: absolute; inset: 0; background: var(--header-bg, #0f0f0f); padding: 0 12px; align-items: center; gap: 12px; z-index: 110; }
         .search-form-mobile.active { display: flex; }
-        .search-input-wrap-mob { flex: 1; display: flex; align-items: center; background: #222; border-radius: 20px; padding: 0 16px; height: 36px; }
+        .search-input-wrap-mob { flex: 1; display: flex; align-items: center; background: rgba(34,34,34,0.8); border-radius: 20px; padding: 0 16px; height: 36px; }
         .search-input-wrap-mob input { flex: 1; background: transparent; border: none; color: #fff; font-size: 15px; outline: none; }
         .search-btn-mobile-toggle { display: none; background: transparent; border: none; color: #fff; cursor: pointer; padding: 8px; }
 
         /* ===== SIDEBAR (DESKTOP) ===== */
-        #sidebar { position: fixed; top: 56px; left: 0; width: 240px; height: calc(100vh - 56px); background: #0f0f0f; overflow-y: auto; padding: 12px 0; z-index: 90; }
+        #sidebar { position: fixed; top: 56px; left: 0; width: 240px; height: calc(100vh - 56px); background: var(--header-bg, #0f0f0f); overflow-y: auto; padding: 12px 0; z-index: 90; transition: background 0.3s; }
         .sidebar-item { display: flex; align-items: center; gap: 24px; padding: 0 12px; height: 40px; cursor: pointer; border-radius: 10px; margin: 0 12px; transition: background 0.15s; }
         .sidebar-item:hover { background: rgba(255,255,255,0.1); }
         .sidebar-item.active { background: rgba(255,255,255,0.15); font-weight: 500; }
@@ -60,7 +64,7 @@ HTML_TEMPLATE = """
         .sidebar-divider { height: 1px; background: rgba(255,255,255,0.1); margin: 12px 0; }
 
         /* ===== BOTTOM NAV (MOBILE) ===== */
-        #bottom-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: 50px; background: #0f0f0f; border-top: 1px solid rgba(255,255,255,0.05); z-index: 100; justify-content: space-around; align-items: center; }
+        #bottom-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: 50px; background: var(--header-bg, #0f0f0f); border-top: 1px solid rgba(255,255,255,0.05); z-index: 100; justify-content: space-around; align-items: center; transition: background 0.3s; }
         .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; flex: 1; height: 100%; cursor: pointer; }
         .nav-item .material-icons-outlined, .nav-item .material-icons { font-size: 24px; }
         .nav-item .nav-label { font-size: 10px; margin-top: 3px; }
@@ -70,10 +74,10 @@ HTML_TEMPLATE = """
         /* ===== MAIN CONTENT & GRID ===== */
         #main { margin-left: 240px; margin-top: 56px; padding: 24px; min-height: 100vh; }
         
-        .chips-wrapper { position: sticky; top: 56px; background: #0f0f0f; z-index: 10; padding: 12px 0; margin-bottom: 24px; }
+        .chips-wrapper { position: sticky; top: 56px; background: transparent; z-index: 10; padding: 12px 0; margin-bottom: 24px; }
         .chips-bar { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; }
         .chips-bar::-webkit-scrollbar { display: none; }
-        .chip { padding: 6px 12px; border-radius: 8px; font-size: 14px; font-weight: 500; white-space: nowrap; border: none; background: #272727; color: #f1f1f1; cursor: pointer; }
+        .chip { padding: 6px 12px; border-radius: 8px; font-size: 14px; font-weight: 500; white-space: nowrap; border: none; background: rgba(39,39,39,0.8); color: #f1f1f1; cursor: pointer; backdrop-filter: blur(5px); }
         .chip.active { background: #f1f1f1; color: #0f0f0f; }
 
         .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 40px 16px; }
@@ -108,10 +112,10 @@ HTML_TEMPLATE = """
         .btn-subscribe { background: #f1f1f1; color: #0f0f0f; font-weight: 600; border: none; padding: 10px 20px; border-radius: 20px; font-size: 14px; cursor: pointer; }
         
         .action-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
-        .action-pill { display: flex; align-items: center; gap: 6px; background: #272727; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+        .action-pill { display: flex; align-items: center; gap: 6px; background: rgba(39,39,39,0.8); padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; backdrop-filter: blur(5px); }
         .action-pill:hover { background: #3f3f3f; }
         
-        .comments-box { background: #272727; border-radius: 12px; padding: 16px; margin-top: 16px; }
+        .comments-box { background: rgba(39,39,39,0.8); border-radius: 12px; padding: 16px; margin-top: 16px; backdrop-filter: blur(5px); }
 
         /* Related Videos Column */
         .related-col { display: flex; flex-direction: column; gap: 12px; }
@@ -123,14 +127,22 @@ HTML_TEMPLATE = """
         .related-vid-title { font-size: 14px; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3; }
         .related-vid-channel, .related-vid-meta { font-size: 12px; color: #aaa; }
 
-        /* ===== PROFILE TAB ===== */
+        /* ===== PROFILE & SETTINGS TAB ===== */
         #profile-section { display: none; margin-left: 240px; margin-top: 56px; padding: 24px; min-height: 100vh; }
         .profile-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
         .profile-avatar { width: 72px; height: 72px; border-radius: 50%; background: #ff4e45; color: #fff; font-size: 32px; display: flex; align-items: center; justify-content: center; }
         .profile-name { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
         .profile-handle { font-size: 14px; color: #aaa; margin-bottom: 12px; }
-        .profile-btn { background: #272727; border: none; color: #fff; padding: 6px 12px; border-radius: 16px; font-size: 13px; font-weight: 500; cursor: pointer; }
         
+        .settings-card { background: rgba(25,25,25,0.85); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 20px; margin-bottom: 24px; max-width: 600px; backdrop-filter: blur(10px); }
+        .settings-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .settings-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+        .settings-group label { font-size: 13px; color: #aaa; }
+        .settings-input { width: 100%; background: #121212; border: 1px solid #333; border-radius: 8px; color: #fff; padding: 10px; font-size: 14px; outline: none; }
+        .settings-range { width: 100%; accent-color: #ff0000; cursor: pointer; }
+        .btn-save-settings { background: #ff0000; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 500; cursor: pointer; font-size: 14px; }
+        .btn-save-settings:hover { background: #cc0000; }
+
         .horizontal-list { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 16px; scrollbar-width: none; }
         .horizontal-list::-webkit-scrollbar { display: none; }
         .hist-card { width: 160px; flex-shrink: 0; cursor: pointer; }
@@ -182,6 +194,7 @@ HTML_TEMPLATE = """
             #profile-section { margin-left: 0; padding: 0; padding-bottom: 60px; }
             .profile-header { padding: 24px 16px; margin-bottom: 0; }
             .horizontal-list { padding: 0 16px 16px; }
+            .settings-card { margin: 16px; width: auto; }
         }
     </style>
 </head>
@@ -204,7 +217,7 @@ HTML_TEMPLATE = """
     <div class="header-right">
         <button class="search-btn-mobile-toggle" onclick="toggleMobileSearch(true)"><span class="material-icons-outlined">search</span></button>
         <button class="header-icon" id="installAppBtn" style="display:none; color:#3ea6ff;" title="Instal Aplikasi"><span class="material-icons-outlined">install_mobile</span></button>
-        <div class="nav-avatar" style="margin-left:8px; width:32px; height:32px; cursor:pointer;" onclick="showProfile(document.querySelectorAll('.nav-item')[2])">t</div>
+        <div class="nav-avatar" style="margin-left:8px; width:32px; height:32px; cursor:pointer;" onclick="showProfile(document.querySelectorAll('.nav-item')[1])">t</div>
     </div>
     
     <form class="search-form-mobile" id="mobile-search-form" onsubmit="searchVideos(event, 'mobile')">
@@ -219,9 +232,8 @@ HTML_TEMPLATE = """
 
 <nav id="sidebar">
     <div class="sidebar-item active" onclick="goHome(event)"><span class="material-icons-outlined">home</span><span class="sidebar-label">Beranda</span></div>
-    <div class="sidebar-item" onclick="loadShorts(this)"><span class="material-icons-outlined">play_circle</span><span class="sidebar-label">Shorts</span></div>
     <div class="sidebar-divider"></div>
-    <div class="sidebar-item" onclick="showProfile(this)"><span class="material-icons-outlined">history</span><span class="sidebar-label">Histori</span></div>
+    <div class="sidebar-item" onclick="showProfile(this)"><span class="material-icons-outlined">history</span><span class="sidebar-label">Histori & Pengaturan</span></div>
 </nav>
 
 <main id="main">
@@ -284,26 +296,89 @@ HTML_TEMPLATE = """
         <div>
             <div class="profile-name">teu apal</div>
             <div class="profile-handle">@teuapal • <span style="color: #ff4e45; font-weight: 500;">Anggota Premium</span></div>
-            <button class="profile-btn">Buat channel</button>
         </div>
     </div>
-    <div style="padding: 16px; font-size: 18px; font-weight: 700;">Histori</div>
+
+    <!-- PENGATURAN TEMA BACKGROUND -->
+    <div class="settings-card">
+        <div class="settings-title"><span class="material-icons-outlined">palette</span> Pengaturan Tema Background</div>
+        <div class="settings-group">
+            <label>URL Gambar Background (dari Galeri / Web):</label>
+            <input type="text" id="bg-url-input" class="settings-input" placeholder="https://contoh.com/gambar.jpg">
+        </div>
+        <div class="settings-group">
+            <label>Transparansi Background / Glassmorphism (<span id="opacity-val">90</span>%):</label>
+            <input type="range" id="bg-opacity-range" class="settings-range" min="10" max="100" value="90" oninput="document.getElementById('opacity-val').textContent = this.value">
+        </div>
+        <button class="btn-save-settings" onclick="saveThemeSettings()">Terapkan Tema</button>
+        <button style="background:transparent; color:#aaa; border:none; padding:8px; cursor:pointer; font-size:13px; margin-left:8px;" onclick="resetThemeSettings()">Reset Default</button>
+    </div>
+
+    <div style="padding: 0 0 16px; font-size: 18px; font-weight: 700;">Histori Tontonan</div>
     <div class="horizontal-list" id="history-scroll"></div>
 </div>
 
 <nav id="bottom-nav">
     <div class="nav-item active" onclick="goHome(event, this)"><span class="material-icons-outlined">home</span><span class="nav-label">Beranda</span></div>
-    <div class="nav-item" onclick="loadShorts(this)"><span class="material-icons-outlined">play_circle</span><span class="nav-label">Shorts</span></div>
     <div class="nav-item" onclick="showProfile(this)"><div class="nav-avatar">t</div><span class="nav-label">Anda</span></div>
 </nav>
 
 <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js?v=5').then(reg => {
+            navigator.serviceWorker.register('/sw.js?v=7').then(reg => {
                 reg.update();
             });
         });
+    }
+
+    // Terapkan Tema yang Disimpan Saat Halaman Dimuat
+    window.addEventListener('DOMContentLoaded', () => {
+        loadThemeSettings();
+        loadHome();
+    });
+
+    function saveThemeSettings() {
+        const url = document.getElementById('bg-url-input').value.trim();
+        const opacity = document.getElementById('bg-opacity-range').value / 100;
+        
+        const theme = { url, opacity };
+        localStorage.setItem('yt_theme', JSON.stringify(theme));
+        applyTheme(theme);
+        alert('Tema berhasil diterapkan!');
+    }
+
+    function resetThemeSettings() {
+        localStorage.removeItem('yt_theme');
+        document.getElementById('bg-url-input').value = '';
+        document.getElementById('bg-opacity-range').value = 90;
+        document.getElementById('opacity-val').textContent = '90';
+        applyTheme({ url: '', opacity: 0.92 });
+        alert('Tema dikembalikan ke default.');
+    }
+
+    function loadThemeSettings() {
+        const saved = localStorage.getItem('yt_theme');
+        if (saved) {
+            try {
+                const theme = JSON.parse(saved);
+                document.getElementById('bg-url-input').value = theme.url || '';
+                document.getElementById('bg-opacity-range').value = (theme.opacity || 0.92) * 100;
+                document.getElementById('opacity-val').textContent = Math.round((theme.opacity || 0.92) * 100);
+                applyTheme(theme);
+            } catch(e){}
+        }
+    }
+
+    function applyTheme(theme) {
+        if (theme.url) {
+            document.body.style.backgroundImage = `url('${theme.url}')`;
+        } else {
+            document.body.style.backgroundImage = 'none';
+        }
+        const alpha = theme.opacity !== undefined ? theme.opacity : 0.92;
+        document.documentElement.style.setProperty('--bg-overlay', `rgba(15, 15, 15, ${alpha})`);
+        document.documentElement.style.setProperty('--header-bg', `rgba(15, 15, 15, ${Math.min(alpha + 0.05, 1)})`);
     }
 
     let deferredPrompt;
@@ -319,9 +394,6 @@ HTML_TEMPLATE = """
         if (deferredPrompt !== null) {
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
-            if (outcome === 'accepted') {
-                console.log('User menginstal aplikasi');
-            }
             deferredPrompt = null;
             installBtn.style.display = 'none';
         }
@@ -338,8 +410,6 @@ HTML_TEMPLATE = """
     let currentRelatedKeyword = '';
     let currentRelatedOffset = 0;
     let isRelatedLoading = false;
-    
-    window.addEventListener('DOMContentLoaded', () => { loadHome(); });
     
     window.addEventListener('scroll', () => {
         if (!isLoadingMore && document.getElementById('main').style.display === 'block') {
@@ -416,14 +486,12 @@ HTML_TEMPLATE = """
     }
 
     function goHome(e, el) { if (e) e.preventDefault(); activateNav(el || document.querySelector('.nav-item')); document.getElementById('chips-container').style.display = 'block'; loadHome(); }
-    
-    function loadShorts(el) { activateNav(el); document.getElementById('chips-container').style.display = 'none'; showSkeletons(); currentQuery = 'shorts'; fetch('/api/shorts').then(r=>r.json()).then(d => { renderGrid(d); }); }
 
     function showProfile(el) {
         activateNav(el); document.getElementById('main').style.display = 'none'; document.getElementById('profile-section').style.display = 'block';
         const hist = JSON.parse(localStorage.getItem('yt_history') || '[]');
         const container = document.getElementById('history-scroll');
-        if(hist.length === 0) { container.innerHTML = '<div style="color:#aaa; font-size:13px; padding-left:16px;">Belum ada histori tontonan.</div>'; return; }
+        if(hist.length === 0) { container.innerHTML = '<div style="color:#aaa; font-size:13px;">Belum ada histori tontonan.</div>'; return; }
         container.innerHTML = hist.slice(0,10).map(v => `<div class="hist-card" onclick="playVideo('${encodeURIComponent(JSON.stringify(v))}')"><img src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" class="hist-thumb"><div class="hist-title">${v.title}</div><div class="hist-channel">${v.channel}</div></div>`).join('');
     }
 
@@ -577,7 +645,6 @@ def api_home():
     try:
         base_keywords = ["Viral", "Hits Indonesia", "Trending Video", "Podcast Terbaru", "Gaming"]
         random_keyword = random.choice(base_keywords)
-        # DIOPTIMASI: Limit diturunkan dari 30 ke 15 agar awal masuk jauh lebih cepat
         videos = scrapetube.get_search(random_keyword, limit=15)
         for v in videos:
             d = extract_video_data(v)
@@ -590,7 +657,7 @@ def api_home():
 def api_search():
     query = request.args.get("q", "").strip()
     offset = int(request.args.get("offset", 0))
-    limit = 15; results = [] # Limit per scroll diperkecil agar beban ringan
+    limit = 15; results = []
     if not query: return jsonify(results)
     try:
         videos = scrapetube.get_search(query, limit=offset+limit)
@@ -601,14 +668,5 @@ def api_search():
     except Exception: pass
     return jsonify(results)
 
-@app.route("/api/shorts")
-def api_shorts():
-    results = []
-    try:
-        # DIOPTIMASI: Limit diturunkan dari 60 ke 20 agar Shorts tidak lama loadingnya
-        videos = scrapetube.get_search("#shorts viral", limit=20)
-        for v in videos:
-            d = extract_video_data(v); dur_text = d.get("duration", ""); is_short = False
-            if dur_text:
-                parts = dur_text.split(":")
-                if len(
+if __name__ == "__main__":
+    app.run(debug=True, port=2000)
