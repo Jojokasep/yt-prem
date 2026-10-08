@@ -17,7 +17,7 @@ HTML_TEMPLATE = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0f0f0f">
     <title>YouTube Premium Clone</title>
-    <link rel="manifest" href="/manifest.json?v=9">
+    <link rel="manifest" href="/manifest.json?v=10">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
@@ -216,7 +216,8 @@ HTML_TEMPLATE = """
     <div class="header-right">
         <button class="search-btn-mobile-toggle" onclick="toggleMobileSearch(true)"><span class="material-icons-outlined">search</span></button>
         <button class="header-icon" id="installAppBtn" style="display:none; color:#3ea6ff;" title="Instal Aplikasi"><span class="material-icons-outlined">install_mobile</span></button>
-        <div class="nav-avatar header-avatar-disp" style="margin-left:8px; width:32px; height:32px; cursor:pointer;" onclick="showProfile(document.querySelectorAll('.nav-item')[1])">t</div>
+        <!-- Ditambahkan class global-avatar-disp agar otomatis sinkron ke header pojok kanan atas -->
+        <div class="nav-avatar global-avatar-disp" style="margin-left:8px; width:32px; height:32px; cursor:pointer;" onclick="showProfile(document.querySelectorAll('.nav-item')[1])">t</div>
     </div>
     
     <form class="search-form-mobile" id="mobile-search-form" onsubmit="searchVideos(event, 'mobile')">
@@ -309,13 +310,13 @@ HTML_TEMPLATE = """
 
 <nav id="bottom-nav">
     <div class="nav-item active" onclick="goHome(event, this)"><span class="material-icons-outlined">home</span><span class="nav-label">Beranda</span></div>
-    <div class="nav-item" onclick="showProfile(this)"><div class="nav-avatar nav-avatar-disp">t</div><span class="nav-label">Anda</span></div>
+    <div class="nav-item" onclick="showProfile(this)"><div class="nav-avatar global-avatar-disp">t</div><span class="nav-label">Anda</span></div>
 </nav>
 
 <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js?v=9').then(reg => {
+            navigator.serviceWorker.register('/sw.js?v=10').then(reg => {
                 reg.update();
             });
         });
@@ -396,7 +397,6 @@ HTML_TEMPLATE = """
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    // Fungsi Kustomisasi Avatar dari Galeri
     function handleAvatarUpload(event) {
         const file = event.target.files[0];
         if (file) {
@@ -418,10 +418,13 @@ HTML_TEMPLATE = """
     }
 
     function applyCustomAvatar(imgSrc) {
-        const avatarElements = document.querySelectorAll('.nav-avatar-disp');
+        // Mengubah semua elemen ber-class global-avatar-disp (Header kanan atas & Navigasi bawah)
+        const avatarElements = document.querySelectorAll('.global-avatar-disp');
         avatarElements.forEach(el => {
-            el.innerHTML = `<img src="${imgSrc}" alt="Avatar">`;
+            el.innerHTML = `<img src="${imgSrc}" alt="Avatar" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
         });
+        
+        // Mengubah bagian avatar besar di halaman profil
         const profileInner = document.getElementById('profile-avatar-inner');
         if (profileInner) {
             profileInner.innerHTML = `<img src="${imgSrc}" alt="Avatar" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
@@ -665,7 +668,7 @@ def manifest():
 @app.route("/sw.js")
 def service_worker():
     js = """
-    const CACHE_NAME = 'yt-clone-v9';
+    const CACHE_NAME = 'yt-clone-v10';
     self.addEventListener('install', (e) => { 
         self.skipWaiting(); 
     });
