@@ -17,7 +17,7 @@ HTML_TEMPLATE = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0f0f0f">
     <title>YouTube Premium Clone</title>
-    <link rel="manifest" href="/manifest.json?v=8">
+    <link rel="manifest" href="/manifest.json?v=9">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
@@ -68,7 +68,8 @@ HTML_TEMPLATE = """
         .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; flex: 1; height: 100%; cursor: pointer; min-width: 44px; min-height: 44px; }
         .nav-item .material-icons-outlined, .nav-item .material-icons { font-size: 24px; }
         .nav-item .nav-label { font-size: 10px; margin-top: 3px; }
-        .nav-avatar { width: 24px; height: 24px; border-radius: 50%; background: #ff4e45; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; border: 2px solid transparent; }
+        .nav-avatar { width: 24px; height: 24px; border-radius: 50%; background: #ff4e45; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; border: 2px solid transparent; overflow: hidden; }
+        .nav-avatar img { width: 100%; height: 100%; object-fit: cover; }
         .nav-item.active .nav-avatar { border-color: #fff; }
 
         /* ===== MAIN CONTENT & GRID ===== */
@@ -130,7 +131,9 @@ HTML_TEMPLATE = """
         /* ===== PROFILE TAB ===== */
         #profile-section { display: none; margin-left: 240px; margin-top: 56px; padding: 24px; min-height: 100vh; }
         .profile-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
-        .profile-avatar { width: 72px; height: 72px; border-radius: 50%; background: #ff4e45; color: #fff; font-size: 32px; display: flex; align-items: center; justify-content: center; }
+        .profile-avatar-wrap { position: relative; width: 72px; height: 72px; cursor: pointer; border-radius: 50%; overflow: hidden; background: #ff4e45; color: #fff; font-size: 32px; display: flex; align-items: center; justify-content: center; border: 2px dashed rgba(255,255,255,0.4); }
+        .profile-avatar-wrap img { width: 100%; height: 100%; object-fit: cover; }
+        .profile-avatar-wrap:hover::after { content: 'Ubah'; position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; }
         .profile-name { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
         .profile-handle { font-size: 14px; color: #aaa; margin-bottom: 12px; }
         .profile-btn { background: #272727; border: none; color: #fff; padding: 8px 16px; border-radius: 16px; font-size: 13px; font-weight: 500; cursor: pointer; min-height: 36px; }
@@ -213,7 +216,7 @@ HTML_TEMPLATE = """
     <div class="header-right">
         <button class="search-btn-mobile-toggle" onclick="toggleMobileSearch(true)"><span class="material-icons-outlined">search</span></button>
         <button class="header-icon" id="installAppBtn" style="display:none; color:#3ea6ff;" title="Instal Aplikasi"><span class="material-icons-outlined">install_mobile</span></button>
-        <div class="nav-avatar" style="margin-left:8px; width:32px; height:32px; cursor:pointer;" onclick="showProfile(document.querySelectorAll('.nav-item')[1])">t</div>
+        <div class="nav-avatar header-avatar-disp" style="margin-left:8px; width:32px; height:32px; cursor:pointer;" onclick="showProfile(document.querySelectorAll('.nav-item')[1])">t</div>
     </div>
     
     <form class="search-form-mobile" id="mobile-search-form" onsubmit="searchVideos(event, 'mobile')">
@@ -288,11 +291,14 @@ HTML_TEMPLATE = """
 
 <div id="profile-section">
     <div class="profile-header">
-        <div class="profile-avatar">t</div>
+        <div class="profile-avatar-wrap" onclick="document.getElementById('avatar-file-input').click()" title="Ketuk untuk ganti foto profil">
+            <div id="profile-avatar-inner" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">t</div>
+        </div>
+        <input type="file" id="avatar-file-input" accept="image/*" style="display:none" onchange="handleAvatarUpload(event)">
         <div>
             <div class="profile-name">teu apal</div>
             <div class="profile-handle">@teuapal • <span style="color: #ff4e45; font-weight: 500;">Anggota Premium</span></div>
-            <button class="profile-btn">Buat channel</button>
+            <button class="profile-btn" onclick="document.getElementById('avatar-file-input').click()">Ganti Foto Profil</button>
         </div>
     </div>
     <div style="padding: 16px; font-size: 18px; font-weight: 700;">Histori</div>
@@ -303,13 +309,13 @@ HTML_TEMPLATE = """
 
 <nav id="bottom-nav">
     <div class="nav-item active" onclick="goHome(event, this)"><span class="material-icons-outlined">home</span><span class="nav-label">Beranda</span></div>
-    <div class="nav-item" onclick="showProfile(this)"><div class="nav-avatar">t</div><span class="nav-label">Anda</span></div>
+    <div class="nav-item" onclick="showProfile(this)"><div class="nav-avatar nav-avatar-disp">t</div><span class="nav-label">Anda</span></div>
 </nav>
 
 <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js?v=8').then(reg => {
+            navigator.serviceWorker.register('/sw.js?v=9').then(reg => {
                 reg.update();
             });
         });
@@ -349,11 +355,11 @@ HTML_TEMPLATE = """
     let isRelatedLoading = false;
     
     window.addEventListener('DOMContentLoaded', () => { 
+        loadCustomAvatar();
         history.replaceState({view: 'home'}, '', '');
         loadHome(); 
     });
 
-    // Menangani tombol Back / Forward di Browser
     window.addEventListener('popstate', (e) => {
         isLoadingMore = false;
         isRelatedLoading = false;
@@ -388,6 +394,38 @@ HTML_TEMPLATE = """
 
     function scrollToTop() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Fungsi Kustomisasi Avatar dari Galeri
+    function handleAvatarUpload(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64Image = e.target.result;
+                localStorage.setItem('yt_custom_avatar', base64Image);
+                applyCustomAvatar(base64Image);
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function loadCustomAvatar() {
+        const savedAvatar = localStorage.getItem('yt_custom_avatar');
+        if (savedAvatar) {
+            applyCustomAvatar(savedAvatar);
+        }
+    }
+
+    function applyCustomAvatar(imgSrc) {
+        const avatarElements = document.querySelectorAll('.nav-avatar-disp');
+        avatarElements.forEach(el => {
+            el.innerHTML = `<img src="${imgSrc}" alt="Avatar">`;
+        });
+        const profileInner = document.getElementById('profile-avatar-inner');
+        if (profileInner) {
+            profileInner.innerHTML = `<img src="${imgSrc}" alt="Avatar" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+        }
     }
 
     async function loadHome() {
@@ -485,7 +523,6 @@ HTML_TEMPLATE = """
     function playVideo(videoStr, push = true) {
         let v; try { v = JSON.parse(decodeURIComponent(videoStr)); } catch(e){ return; }
         
-        // Reset status loading saat masuk player
         isLoadingMore = false;
         isRelatedLoading = false;
 
@@ -628,7 +665,7 @@ def manifest():
 @app.route("/sw.js")
 def service_worker():
     js = """
-    const CACHE_NAME = 'yt-clone-v8';
+    const CACHE_NAME = 'yt-clone-v9';
     self.addEventListener('install', (e) => { 
         self.skipWaiting(); 
     });
@@ -689,3 +726,13 @@ def api_search():
     limit = 15
     results = []
     if not query: 
+        return jsonify(results)
+    try:
+        all_videos = cached_scrapetube_search(query, offset + limit)
+        results = all_videos[offset:offset + limit]
+    except Exception as e:
+        logging.error(f"Gagal memuat API Search untuk keyword '{query}': {e}")
+    return jsonify(results)
+
+if __name__ == "__main__":
+    app.run(debug=True, port=2000)
