@@ -13,8 +13,7 @@ HTML_TEMPLATE = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0f0f0f">
     <title>YouTube Premium Clone</title>
-    <!-- Tambahkan v=4 untuk memaksa Chrome memuat ulang manifest terbaru -->
-    <link rel="manifest" href="/manifest.json?v=4">
+    <link rel="manifest" href="/manifest.json?v=5">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
@@ -203,7 +202,6 @@ HTML_TEMPLATE = """
     </form>
 
     <div class="header-right">
-        <!-- Hanya menyisakan Search, Tombol Install PWA, dan Avatar Profile -->
         <button class="search-btn-mobile-toggle" onclick="toggleMobileSearch(true)"><span class="material-icons-outlined">search</span></button>
         <button class="header-icon" id="installAppBtn" style="display:none; color:#3ea6ff;" title="Instal Aplikasi"><span class="material-icons-outlined">install_mobile</span></button>
         <div class="nav-avatar" style="margin-left:8px; width:32px; height:32px; cursor:pointer;" onclick="showProfile(document.querySelectorAll('.nav-item')[2])">t</div>
@@ -220,7 +218,6 @@ HTML_TEMPLATE = """
 </header>
 
 <nav id="sidebar">
-    <!-- Hanya menyisakan Beranda, Shorts, dan Histori -->
     <div class="sidebar-item active" onclick="goHome(event)"><span class="material-icons-outlined">home</span><span class="sidebar-label">Beranda</span></div>
     <div class="sidebar-item" onclick="loadShorts(this)"><span class="material-icons-outlined">play_circle</span><span class="sidebar-label">Shorts</span></div>
     <div class="sidebar-divider"></div>
@@ -295,17 +292,15 @@ HTML_TEMPLATE = """
 </div>
 
 <nav id="bottom-nav">
-    <!-- Hanya menyisakan Beranda, Shorts, dan Anda -->
     <div class="nav-item active" onclick="goHome(event, this)"><span class="material-icons-outlined">home</span><span class="nav-label">Beranda</span></div>
     <div class="nav-item" onclick="loadShorts(this)"><span class="material-icons-outlined">play_circle</span><span class="nav-label">Shorts</span></div>
     <div class="nav-item" onclick="showProfile(this)"><div class="nav-avatar">t</div><span class="nav-label">Anda</span></div>
 </nav>
 
 <script>
-    // ===== PWA Service Worker & Install Button Logic =====
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js?v=4').then(reg => {
+            navigator.serviceWorker.register('/sw.js?v=5').then(reg => {
                 reg.update();
             });
         });
@@ -315,10 +310,8 @@ HTML_TEMPLATE = """
     const installBtn = document.getElementById('installAppBtn');
 
     window.addEventListener('beforeinstallprompt', (e) => {
-        // Mencegah Chrome memunculkan prompt mini infobar otomatis
         e.preventDefault();
         deferredPrompt = e;
-        // Munculkan tombol instal khusus kita di header
         installBtn.style.display = 'block';
     });
 
@@ -337,20 +330,17 @@ HTML_TEMPLATE = """
     window.addEventListener('appinstalled', () => {
         installBtn.style.display = 'none';
     });
-    // =====================================================
 
     let currentQuery = '';
     let currentOffset = 0;
     let isLoadingMore = false;
     
-    // Variabel untuk Player Scroll
     let currentRelatedKeyword = '';
     let currentRelatedOffset = 0;
     let isRelatedLoading = false;
     
     window.addEventListener('DOMContentLoaded', () => { loadHome(); });
     
-    // Infinite Scroll Logic
     window.addEventListener('scroll', () => {
         if (!isLoadingMore && document.getElementById('main').style.display === 'block') {
             if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 300) {
@@ -442,7 +432,6 @@ HTML_TEMPLATE = """
         let hist = JSON.parse(localStorage.getItem('yt_history') || '[]'); hist = hist.filter(x => x.id !== v.id); hist.unshift(v);
         if(hist.length > 50) hist.pop(); localStorage.setItem('yt_history', JSON.stringify(hist));
 
-        // Form tertutup saat klik video
         toggleMobileSearch(false);
 
         document.getElementById('main').style.display = 'none';
@@ -545,7 +534,6 @@ def extract_video_data(video):
 @app.route("/")
 def home(): return render_template_string(HTML_TEMPLATE)
 
-# ===== ROUTES UNTUK PWA =====
 @app.route("/manifest.json")
 def manifest():
     manifest_data = {
@@ -582,15 +570,15 @@ def service_worker():
     });
     """
     return app.response_class(js, mimetype='application/javascript')
-# ============================
 
 @app.route("/api/home")
 def api_home():
     results = []
     try:
-        base_keywords = ["Viral 2024", "Hits Indonesia", "Populer Hari Ini", "Trending Video", "Podcast Indonesia terbaru", "Gaming Indonesia"]
+        base_keywords = ["Viral", "Hits Indonesia", "Trending Video", "Podcast Terbaru", "Gaming"]
         random_keyword = random.choice(base_keywords)
-        videos = scrapetube.get_search(random_keyword, limit=30)
+        # DIOPTIMASI: Limit diturunkan dari 30 ke 15 agar awal masuk jauh lebih cepat
+        videos = scrapetube.get_search(random_keyword, limit=15)
         for v in videos:
             d = extract_video_data(v)
             if d.get("id"): results.append(d)
@@ -602,7 +590,7 @@ def api_home():
 def api_search():
     query = request.args.get("q", "").strip()
     offset = int(request.args.get("offset", 0))
-    limit = 20; results = []
+    limit = 15; results = [] # Limit per scroll diperkecil agar beban ringan
     if not query: return jsonify(results)
     try:
         videos = scrapetube.get_search(query, limit=offset+limit)
@@ -617,18 +605,10 @@ def api_search():
 def api_shorts():
     results = []
     try:
-        videos = scrapetube.get_search("shorts viral #shorts", limit=60)
+        # DIOPTIMASI: Limit diturunkan dari 60 ke 20 agar Shorts tidak lama loadingnya
+        videos = scrapetube.get_search("#shorts viral", limit=20)
         for v in videos:
             d = extract_video_data(v); dur_text = d.get("duration", ""); is_short = False
             if dur_text:
                 parts = dur_text.split(":")
-                if len(parts) == 1: is_short = True
-                elif len(parts) == 2 and int(parts[0]) == 0 and int(parts[1]) <= 60: is_short = True
-            if is_short and d.get("id"):
-                if not any(r["id"] == d["id"] for r in results): results.append(d)
-            if len(results) >= 20: break
-    except Exception: pass
-    return jsonify(results)
-
-if __name__ == "__main__":
-    app.run(debug=True, port=2000)
+                if len(
