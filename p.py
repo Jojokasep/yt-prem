@@ -17,7 +17,7 @@ HTML_TEMPLATE = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0f0f0f">
     <title>YouTube Premium Clone</title>
-    <link rel="manifest" href="/manifest.json?v=10">
+    <link rel="manifest" href="/manifest.json?v=11">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
@@ -185,7 +185,8 @@ HTML_TEMPLATE = """
             .vid-meta { font-size: 13px; }
             
             #player-section { margin-left: 0; padding: 0; padding-bottom: 60px; max-width: 100%; }
-            .player-container { border-radius: 0; position: sticky; top: 0; z-index: 105; }
+            /* DIPERBAIKI: top diubah dari 0 ke 56px agar berhenti tepat di bawah header */
+            .player-container { border-radius: 0; position: sticky; top: 56px; z-index: 95; }
             .player-meta { padding: 12px 16px; }
             .player-title { font-size: 18px; }
             .related-col { padding: 0 16px; }
@@ -216,7 +217,6 @@ HTML_TEMPLATE = """
     <div class="header-right">
         <button class="search-btn-mobile-toggle" onclick="toggleMobileSearch(true)"><span class="material-icons-outlined">search</span></button>
         <button class="header-icon" id="installAppBtn" style="display:none; color:#3ea6ff;" title="Instal Aplikasi"><span class="material-icons-outlined">install_mobile</span></button>
-        <!-- Ditambahkan class global-avatar-disp agar otomatis sinkron ke header pojok kanan atas -->
         <div class="nav-avatar global-avatar-disp" style="margin-left:8px; width:32px; height:32px; cursor:pointer;" onclick="showProfile(document.querySelectorAll('.nav-item')[1])">t</div>
     </div>
     
@@ -316,7 +316,7 @@ HTML_TEMPLATE = """
 <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js?v=10').then(reg => {
+            navigator.serviceWorker.register('/sw.js?v=11').then(reg => {
                 reg.update();
             });
         });
@@ -418,13 +418,11 @@ HTML_TEMPLATE = """
     }
 
     function applyCustomAvatar(imgSrc) {
-        // Mengubah semua elemen ber-class global-avatar-disp (Header kanan atas & Navigasi bawah)
         const avatarElements = document.querySelectorAll('.global-avatar-disp');
         avatarElements.forEach(el => {
             el.innerHTML = `<img src="${imgSrc}" alt="Avatar" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
         });
         
-        // Mengubah bagian avatar besar di halaman profil
         const profileInner = document.getElementById('profile-avatar-inner');
         if (profileInner) {
             profileInner.innerHTML = `<img src="${imgSrc}" alt="Avatar" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
@@ -668,7 +666,7 @@ def manifest():
 @app.route("/sw.js")
 def service_worker():
     js = """
-    const CACHE_NAME = 'yt-clone-v10';
+    const CACHE_NAME = 'yt-clone-v11';
     self.addEventListener('install', (e) => { 
         self.skipWaiting(); 
     });
