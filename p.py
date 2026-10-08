@@ -5,7 +5,6 @@ import json
 import logging
 from functools import lru_cache
 
-# Konfigurasi Logging untuk error handling
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 app = Flask(__name__)
@@ -18,7 +17,7 @@ HTML_TEMPLATE = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0f0f0f">
     <title>YouTube Premium Clone</title>
-    <link rel="manifest" href="/manifest.json?v=7">
+    <link rel="manifest" href="/manifest.json?v=8">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
@@ -281,4 +280,412 @@ HTML_TEMPLATE = """
         
         <div class="related-col">
             <div class="related-title">Video Serupa</div>
-            <div id="related-videos-container" style="display: flex; flex-direction: column; gap
+            <div id="related-videos-container" style="display: flex; flex-direction: column; gap: 10px;"></div>
+            <div class="loader-container" id="related-scroll-loader"><div class="spinner"></div></div>
+        </div>
+    </div>
+</div>
+
+<div id="profile-section">
+    <div class="profile-header">
+        <div class="profile-avatar">t</div>
+        <div>
+            <div class="profile-name">teu apal</div>
+            <div class="profile-handle">@teuapal • <span style="color: #ff4e45; font-weight: 500;">Anggota Premium</span></div>
+            <button class="profile-btn">Buat channel</button>
+        </div>
+    </div>
+    <div style="padding: 16px; font-size: 18px; font-weight: 700;">Histori</div>
+    <div class="horizontal-list" id="history-scroll"></div>
+</div>
+
+<button id="scrollTopBtn" onclick="scrollToTop()"><span class="material-icons-outlined">arrow_upward</span></button>
+
+<nav id="bottom-nav">
+    <div class="nav-item active" onclick="goHome(event, this)"><span class="material-icons-outlined">home</span><span class="nav-label">Beranda</span></div>
+    <div class="nav-item" onclick="showProfile(this)"><div class="nav-avatar">t</div><span class="nav-label">Anda</span></div>
+</nav>
+
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js?v=8').then(reg => {
+                reg.update();
+            });
+        });
+    }
+
+    let deferredPrompt;
+    const installBtn = document.getElementById('installAppBtn');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        installBtn.style.display = 'block';
+    });
+
+    installBtn.addEventListener('click', async () => {
+        if (deferredPrompt !== null) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                console.log('User menginstal aplikasi');
+            }
+            deferredPrompt = null;
+            installBtn.style.display = 'none';
+        }
+    });
+
+    window.addEventListener('appinstalled', () => {
+        installBtn.style.display = 'none';
+    });
+
+    let currentQuery = '';
+    let currentOffset = 0;
+    let isLoadingMore = false;
+    
+    let currentRelatedKeyword = '';
+    let currentRelatedOffset = 0;
+    let isRelatedLoading = false;
+    
+    window.addEventListener('DOMContentLoaded', () => { 
+        history.replaceState({view: 'home'}, '', '');
+        loadHome(); 
+    });
+
+    // Menangani tombol Back / Forward di Browser
+    window.addEventListener('popstate', (e) => {
+        isLoadingMore = false;
+        isRelatedLoading = false;
+        if (e.state && e.state.view === 'player') {
+            playVideo(e.state.video, false);
+        } else if (e.state && e.state.view === 'profile') {
+            showProfile(document.querySelectorAll('.nav-item')[1], false);
+        } else {
+            goHome(null, document.querySelector('.nav-item'), false);
+        }
+    });
+    
+    window.addEventListener('scroll', () => {
+        const scrollTopBtn = document.getElementById('scrollTopBtn');
+        if (window.scrollY > 400) {
+            scrollTopBtn.style.display = 'flex';
+        } else {
+            scrollTopBtn.style.display = 'none';
+        }
+
+        if (!isLoadingMore && document.getElementById('main').style.display === 'block') {
+            if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 300) {
+                loadMoreData();
+            }
+        }
+        else if (!isRelatedLoading && document.getElementById('player-section').style.display === 'block') {
+            if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 300) {
+                loadMoreRelated();
+            }
+        }
+    });
+
+    function scrollToTop() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    async function loadHome() {
+        isLoadingMore = false;
+        showSkeletons();
+        currentQuery = ''; currentOffset = 0;
+        document.getElementById('keyword-desktop').value = '';
+        document.getElementById('keyword-mobile').value = '';
+        try { const res = await fetch('/api/home'); const data = await res.json(); renderGrid(data); } catch(e){}
+    }
+
+    async function loadMoreData() {
+        if (isLoadingMore) return;
+        isLoadingMore = true; 
+        document.getElementById('main-scroll-loader').style.display = 'flex';
+        try {
+            let fetchUrl = currentQuery ? `/api/search?q=${encodeURIComponent(currentQuery)}&offset=${currentOffset}` : '/api/home';
+            const res = await fetch(fetchUrl); const data = await res.json();
+            if (data.length > 0) { currentOffset += data.length; appendToGrid(data); }
+        } catch(e){} finally { isLoadingMore = false; document.getElementById('main-scroll-loader').style.display = 'none'; }
+    }
+
+    function toggleMobileSearch(show) {
+        const form = document.getElementById('mobile-search-form');
+        const input = document.getElementById('keyword-mobile');
+        if (show) { form.classList.add('active'); input.focus(); } else { form.classList.remove('active'); }
+    }
+
+    function searchVideos(e, source) {
+        e.preventDefault(); 
+        const inputEl = document.getElementById(source === 'desktop' ? 'keyword-desktop' : 'keyword-mobile');
+        const q = inputEl.value.trim();
+        document.getElementById('keyword-desktop').value = q; 
+        document.getElementById('keyword-mobile').value = q;
+        
+        if (q) { 
+            activateNav(document.querySelector('.nav-item')); 
+            currentQuery = q; 
+            currentOffset = 0; 
+            isLoadingMore = false;
+            
+            showSkeletons();
+            fetch('/api/search?q=' + encodeURIComponent(q))
+                .then(r => r.json())
+                .then(d => { 
+                    currentOffset = d.length; 
+                    renderGrid(d); 
+                });
+        }
+    }
+
+    function chipClick(btn, query) {
+        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active')); btn.classList.add('active');
+        document.getElementById('keyword-desktop').value = query; document.getElementById('keyword-mobile').value = query;
+        isLoadingMore = false;
+        if (query) { currentQuery = query; currentOffset = 0; showSkeletons(); fetch('/api/search?q=' + encodeURIComponent(query)).then(r=>r.json()).then(d => { currentOffset=d.length; renderGrid(d); }); } 
+        else loadHome();
+    }
+
+    function activateNav(el) {
+        if(!el) return;
+        isLoadingMore = false;
+        document.querySelectorAll('.nav-item, .sidebar-item').forEach(n => n.classList.remove('active')); el.classList.add('active');
+        document.getElementById('main').style.display = 'block';
+        document.getElementById('player-section').style.display = 'none';
+        document.getElementById('profile-section').style.display = 'none';
+        document.getElementById('player-box').innerHTML = ''; 
+    }
+
+    function goHome(e, el, push = true) { 
+        if (e) e.preventDefault(); 
+        isLoadingMore = false;
+        activateNav(el || document.querySelector('.nav-item')); 
+        document.getElementById('chips-container').style.display = 'block'; 
+        if (push) {
+            history.pushState({view: 'home'}, '', '');
+        }
+        loadHome(); 
+    }
+
+    function showProfile(el, push = true) {
+        isLoadingMore = false;
+        activateNav(el); 
+        document.getElementById('main').style.display = 'none'; 
+        document.getElementById('profile-section').style.display = 'block';
+        if (push) {
+            history.pushState({view: 'profile'}, '', '#profile');
+        }
+        const hist = JSON.parse(localStorage.getItem('yt_history') || '[]');
+        const container = document.getElementById('history-scroll');
+        if(hist.length === 0) { container.innerHTML = '<div style="color:#aaa; font-size:13px; padding-left:16px;">Belum ada histori tontonan.</div>'; return; }
+        container.innerHTML = hist.slice(0,10).map(v => `<div class="hist-card" onclick="playVideo('${encodeURIComponent(JSON.stringify(v))}')"><img src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" class="hist-thumb"><div class="hist-title">${v.title}</div><div class="hist-channel">${v.channel}</div></div>`).join('');
+    }
+
+    function playVideo(videoStr, push = true) {
+        let v; try { v = JSON.parse(decodeURIComponent(videoStr)); } catch(e){ return; }
+        
+        // Reset status loading saat masuk player
+        isLoadingMore = false;
+        isRelatedLoading = false;
+
+        let hist = JSON.parse(localStorage.getItem('yt_history') || '[]'); hist = hist.filter(x => x.id !== v.id); hist.unshift(v);
+        if(hist.length > 50) hist.pop(); localStorage.setItem('yt_history', JSON.stringify(hist));
+
+        toggleMobileSearch(false);
+
+        document.getElementById('main').style.display = 'none';
+        document.getElementById('profile-section').style.display = 'none';
+        
+        document.getElementById('player-title').textContent = v.title;
+        document.getElementById('player-channel-name').textContent = v.channel || 'Channel Name';
+        document.getElementById('player-channel-avatar').src = v.avatar || '';
+        
+        document.getElementById('player-box').innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
+        
+        document.getElementById('player-section').style.display = 'block'; window.scrollTo(0,0);
+
+        if (push) {
+            history.pushState({view: 'player', video: videoStr}, '', '#watch?v=' + v.id);
+        }
+
+        currentRelatedKeyword = v.title.split(' ').slice(0, 3).join(' ');
+        currentRelatedOffset = 0;
+        document.getElementById('related-videos-container').innerHTML = '';
+        loadMoreRelated(true);
+    }
+
+    async function loadMoreRelated(isFirstLoad = false) {
+        if(isRelatedLoading) return;
+        isRelatedLoading = true;
+        const container = document.getElementById('related-videos-container');
+        
+        if (isFirstLoad) {
+            container.innerHTML = Array(4).fill(`<div class="skeleton-card"><div class="skeleton-thumb"></div><div class="skeleton-info"><div class="skeleton-line" style="width: 90%;"></div><div class="skeleton-line" style="width: 60%;"></div></div></div>`).join('');
+        } else {
+            document.getElementById('related-scroll-loader').style.display = 'flex';
+        }
+
+        try {
+            const res = await fetch(`/api/search?q=${encodeURIComponent(currentRelatedKeyword)}&offset=${currentRelatedOffset}`);
+            const data = await res.json();
+            
+            if (isFirstLoad) container.innerHTML = ''; 
+            
+            if (data.length > 0) {
+                currentRelatedOffset += data.length;
+                const html = data.map(item => {
+                    const itemStr = encodeURIComponent(JSON.stringify(item));
+                    let meta = [item.channel, item.views].filter(Boolean).join(' • ');
+                    return `<div class="related-card" onclick="playVideo('${itemStr}')"><div class="related-thumb"><img src="https://i.ytimg.com/vi/${item.id}/mqdefault.jpg" loading="lazy">${item.duration ? '<span class="duration-badge">' + item.duration + '</span>' : ''}</div><div class="related-info"><div class="related-vid-title">${item.title}</div><div class="related-vid-channel">${item.channel || ''}</div><div class="related-vid-meta">${meta}</div></div></div>`;
+                }).join('');
+                container.insertAdjacentHTML('beforeend', html);
+            } else if (isFirstLoad) {
+                container.innerHTML = '<div style="color:#aaa; font-size:13px;">Tidak ada video serupa.</div>';
+            }
+        } catch(e) {
+            if(isFirstLoad) container.innerHTML = '<div style="color:#aaa; font-size:13px;">Gagal memuat video serupa.</div>';
+        } finally {
+            isRelatedLoading = false;
+            document.getElementById('related-scroll-loader').style.display = 'none';
+        }
+    }
+
+    function showSkeletons() { document.getElementById('video-grid').innerHTML = Array(8).fill(`<div class="vid-card"><div class="thumb-wrap" style="background:#272727; animation: pulse 1.5s infinite;"></div><div class="vid-info"><div class="channel-avatar" style="animation: pulse 1.5s infinite;"></div><div class="vid-text"><div style="height:14px; background:#272727; margin-bottom:8px; width:90%; border-radius:4px; animation: pulse 1.5s infinite;"></div><div style="height:12px; background:#272727; width:60%; border-radius:4px; animation: pulse 1.5s infinite;"></div></div></div></div>`).join(''); }
+
+    function renderGrid(data) { const g = document.getElementById('video-grid'); g.innerHTML = ''; appendToGrid(data); }
+
+    function appendToGrid(data) {
+        const g = document.getElementById('video-grid');
+        data.forEach(v => {
+            const card = document.createElement('div'); card.className = 'vid-card';
+            card.onclick = () => playVideo(encodeURIComponent(JSON.stringify(v)));
+            let avatarHtml = v.avatar ? `<div class="channel-avatar"><img src="${v.avatar}"></div>` : `<div class="channel-avatar">${v.channel ? v.channel.charAt(0).toUpperCase() : '?'}</div>`;
+            card.innerHTML = `<div class="thumb-wrap"><img class="thumb-img" src="https://i.ytimg.com/vi/${v.id}/hqdefault.jpg" loading="lazy">${v.duration ? '<span class="duration-badge">' + v.duration + '</span>' : ''}</div><div class="vid-info">${avatarHtml}<div class="vid-text"><div class="vid-title">${v.title}</div><div class="vid-meta">${[v.channel, v.views, v.published].filter(Boolean).join(' • ')}</div></div></div>`;
+            g.appendChild(card);
+        });
+    }
+</script>
+</body>
+</html>
+"""
+
+def extract_video_data(video):
+    data = {"id": video.get("videoId"), "title": "No Title"}
+    try: 
+        runs = video.get("title", {}).get("runs")
+        if runs: data["title"] = runs[0].get("text", "No Title")
+    except Exception: pass
+    try: data["duration"] = video.get("lengthText", {}).get("simpleText", "")
+    except Exception: pass
+    try: data["views"] = video.get("viewCountText", {}).get("simpleText", "")
+    except Exception: pass
+    try: data["published"] = video.get("publishedTimeText", {}).get("simpleText", "")
+    except Exception: pass
+    try:
+        byline = video.get("longBylineText") or video.get("ownerText")
+        if byline:
+            run = byline.get("runs", [{}])[0]
+            data["channel"] = run.get("text", "")
+            data["channelUrl"] = run.get("navigationEndpoint", {}).get("commandMetadata", {}).get("webCommandMetadata", {}).get("url", "")
+    except Exception: data["channel"] = ""; data["channelUrl"] = ""
+    try:
+        avatar_thumbs = video.get("channelThumbnailSupportedRenderers", {}).get("channelThumbnailWithLinkRenderer", {}).get("thumbnail", {}).get("thumbnails", [])
+        if avatar_thumbs: data["avatar"] = avatar_thumbs[0].get("url", "")
+    except Exception: data["avatar"] = ""
+    return data
+
+@app.route("/")
+def home(): 
+    return render_template_string(HTML_TEMPLATE)
+
+@app.route("/manifest.json")
+def manifest():
+    manifest_data = {
+        "name": "YouTube Premium Clone",
+        "short_name": "Premium",
+        "start_url": "/?mode=pwa",
+        "display": "standalone",
+        "background_color": "#0f0f0f",
+        "theme_color": "#0f0f0f",
+        "icons": [
+            {
+                "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/192px-YouTube_full-color_icon_%282017%29.svg.png",
+                "sizes": "192x192",
+                "type": "image/png",
+                "purpose": "any maskable"
+            },
+            {
+                "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/512px-YouTube_full-color_icon_%282017%29.svg.png",
+                "sizes": "512x512",
+                "type": "image/png",
+                "purpose": "any maskable"
+            }
+        ]
+    }
+    return app.response_class(json.dumps(manifest_data), mimetype='application/manifest+json')
+
+@app.route("/sw.js")
+def service_worker():
+    js = """
+    const CACHE_NAME = 'yt-clone-v8';
+    self.addEventListener('install', (e) => { 
+        self.skipWaiting(); 
+    });
+    self.addEventListener('activate', (e) => { 
+        e.waitUntil(
+            caches.keys().then((keyList) => {
+                return Promise.all(keyList.map((key) => {
+                    if (key !== CACHE_NAME) {
+                        return caches.delete(key);
+                    }
+                }));
+            })
+        );
+        self.clients.claim(); 
+    });
+    self.addEventListener('fetch', (e) => { 
+        e.respondWith(
+            fetch(e.request).catch(() => {
+                return caches.match(e.request).then((response) => {
+                    return response || new Response('Koneksi internet terputus. Silakan periksa kembali jaringan Anda.', {
+                        status: 503,
+                        headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+                    });
+                });
+            })
+        );
+    });
+    """
+    return app.response_class(js, mimetype='application/javascript')
+
+@lru_cache(maxsize=32)
+def cached_scrapetube_search(keyword, limit):
+    results = []
+    videos = scrapetube.get_search(keyword, limit=limit)
+    for v in videos:
+        d = extract_video_data(v)
+        if d.get("id"): 
+            results.append(d)
+    return results
+
+@app.route("/api/home")
+def api_home():
+    results = []
+    try:
+        base_keywords = ["Viral", "Hits Indonesia", "Trending Video", "Podcast Terbaru", "Gaming"]
+        random_keyword = random.choice(base_keywords)
+        results = cached_scrapetube_search(random_keyword, 15)
+        results = list(results)
+        random.shuffle(results)
+    except Exception as e:
+        logging.error(f"Gagal memuat API Home: {e}")
+    return jsonify(results)
+
+@app.route("/api/search")
+def api_search():
+    query = request.args.get("q", "").strip()
+    offset = int(request.args.get("offset", 0))
+    limit = 15
+    results = []
+    if not query: 
