@@ -13,8 +13,8 @@ HTML_TEMPLATE = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0f0f0f">
     <title>YouTube Premium Clone</title>
-    <!-- Tambahkan v=3 untuk memaksa Chrome memuat ulang manifest terbaru -->
-    <link rel="manifest" href="/manifest.json?v=3">
+    <!-- Tambahkan v=4 untuk memaksa Chrome memuat ulang manifest terbaru -->
+    <link rel="manifest" href="/manifest.json?v=4">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
@@ -203,13 +203,10 @@ HTML_TEMPLATE = """
     </form>
 
     <div class="header-right">
+        <!-- Hanya menyisakan Search, Tombol Install PWA, dan Avatar Profile -->
         <button class="search-btn-mobile-toggle" onclick="toggleMobileSearch(true)"><span class="material-icons-outlined">search</span></button>
-        <!-- TOMBOL INSTAL PWA (Hanya muncul jika bisa diinstal) -->
         <button class="header-icon" id="installAppBtn" style="display:none; color:#3ea6ff;" title="Instal Aplikasi"><span class="material-icons-outlined">install_mobile</span></button>
-        
-        <button class="header-icon"><span class="material-icons-outlined">cast</span></button>
-        <button class="header-icon"><span class="material-icons-outlined">notifications_none</span></button>
-        <div class="nav-avatar" style="margin-left:8px; width:32px; height:32px;">t</div>
+        <div class="nav-avatar" style="margin-left:8px; width:32px; height:32px; cursor:pointer;" onclick="showProfile(document.querySelectorAll('.nav-item')[2])">t</div>
     </div>
     
     <form class="search-form-mobile" id="mobile-search-form" onsubmit="searchVideos(event, 'mobile')">
@@ -217,16 +214,15 @@ HTML_TEMPLATE = """
         <div class="search-input-wrap-mob">
             <input type="text" id="keyword-mobile" placeholder="Telusuri YouTube" autocomplete="off">
         </div>
-        <!-- Tombol submit pencarian di mobile -->
         <button type="submit" class="header-icon"><span class="material-icons-outlined">search</span></button>
         <button type="button" class="header-icon" style="background:#222; border-radius:50%; width:36px; height:36px;"><span class="material-icons-outlined" style="font-size:20px;">mic</span></button>
     </form>
 </header>
 
 <nav id="sidebar">
+    <!-- Hanya menyisakan Beranda, Shorts, dan Histori -->
     <div class="sidebar-item active" onclick="goHome(event)"><span class="material-icons-outlined">home</span><span class="sidebar-label">Beranda</span></div>
     <div class="sidebar-item" onclick="loadShorts(this)"><span class="material-icons-outlined">play_circle</span><span class="sidebar-label">Shorts</span></div>
-    <div class="sidebar-item"><span class="material-icons-outlined">subscriptions</span><span class="sidebar-label">Subscription</span></div>
     <div class="sidebar-divider"></div>
     <div class="sidebar-item" onclick="showProfile(this)"><span class="material-icons-outlined">history</span><span class="sidebar-label">Histori</span></div>
 </nav>
@@ -299,10 +295,9 @@ HTML_TEMPLATE = """
 </div>
 
 <nav id="bottom-nav">
+    <!-- Hanya menyisakan Beranda, Shorts, dan Anda -->
     <div class="nav-item active" onclick="goHome(event, this)"><span class="material-icons-outlined">home</span><span class="nav-label">Beranda</span></div>
     <div class="nav-item" onclick="loadShorts(this)"><span class="material-icons-outlined">play_circle</span><span class="nav-label">Shorts</span></div>
-    <div class="nav-item" onclick="alert('Fitur upload video segera hadir')"><span class="material-icons-outlined" style="font-size: 36px; font-weight: 200;">add_circle_outline</span></div>
-    <div class="nav-item" onclick="activateNav(this); alert('Menu Subscription')"><span class="material-icons-outlined">subscriptions</span><span class="nav-label">Subscription</span></div>
     <div class="nav-item" onclick="showProfile(this)"><div class="nav-avatar">t</div><span class="nav-label">Anda</span></div>
 </nav>
 
@@ -310,7 +305,7 @@ HTML_TEMPLATE = """
     // ===== PWA Service Worker & Install Button Logic =====
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js?v=3').then(reg => {
+            navigator.serviceWorker.register('/sw.js?v=4').then(reg => {
                 reg.update();
             });
         });
@@ -404,8 +399,6 @@ HTML_TEMPLATE = """
             currentQuery = q; 
             currentOffset = 0; 
             
-            // Hapus form di mobile dinonaktifkan agar form ketik tidak hilang saat mencari
-            
             showSkeletons();
             fetch('/api/search?q=' + encodeURIComponent(q))
                 .then(r => r.json())
@@ -448,6 +441,9 @@ HTML_TEMPLATE = """
         let v; try { v = JSON.parse(decodeURIComponent(videoStr)); } catch(e){ return; }
         let hist = JSON.parse(localStorage.getItem('yt_history') || '[]'); hist = hist.filter(x => x.id !== v.id); hist.unshift(v);
         if(hist.length > 50) hist.pop(); localStorage.setItem('yt_history', JSON.stringify(hist));
+
+        // Form tertutup saat klik video
+        toggleMobileSearch(false);
 
         document.getElementById('main').style.display = 'none';
         document.getElementById('profile-section').style.display = 'none';
@@ -574,7 +570,6 @@ def manifest():
             }
         ]
     }
-    # Kirim dengan mimetype yang diwajibkan Chrome agar valid
     return app.response_class(json.dumps(manifest_data), mimetype='application/manifest+json')
 
 @app.route("/sw.js")
@@ -583,7 +578,6 @@ def service_worker():
     self.addEventListener('install', (e) => { self.skipWaiting(); });
     self.addEventListener('activate', (e) => { self.clients.claim(); });
     self.addEventListener('fetch', (e) => { 
-        // Chrome wajib mendeteksi response fetch agar PWA valid
         e.respondWith(fetch(e.request).catch(() => new Response('Offline')));
     });
     """
