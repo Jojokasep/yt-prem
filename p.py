@@ -515,11 +515,18 @@ def manifest():
         "display": "standalone",
         "background_color": "#0f0f0f",
         "theme_color": "#0f0f0f",
-        "icons": [{
-            "src": "https://www.youtube.com/s/desktop/10cbf995/img/favicon_144x144.png",
-            "sizes": "144x144",
-            "type": "image/png"
-        }]
+        "icons": [
+            {
+                "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/192px-YouTube_full-color_icon_%282017%29.svg.png",
+                "sizes": "192x192",
+                "type": "image/png"
+            },
+            {
+                "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/512px-YouTube_full-color_icon_%282017%29.svg.png",
+                "sizes": "512x512",
+                "type": "image/png"
+            }
+        ]
     })
 
 @app.route("/sw.js")
@@ -528,7 +535,8 @@ def service_worker():
     self.addEventListener('install', (e) => { self.skipWaiting(); });
     self.addEventListener('activate', (e) => { self.clients.claim(); });
     self.addEventListener('fetch', (e) => { 
-        // Biarkan browser menangani fetch normal, PWA ini hanya untuk installability
+        // Chrome wajib mendeteksi response di sini agar PWA valid
+        e.respondWith(fetch(e.request).catch(() => new Response('Offline')));
     });
     """
     return app.response_class(js, mimetype='application/javascript')
