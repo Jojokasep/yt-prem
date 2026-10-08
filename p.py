@@ -13,7 +13,7 @@ HTML_TEMPLATE = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0f0f0f">
     <title>YouTube Premium Clone</title>
-    <link rel="manifest" href="/manifest.json?v=7">
+    <link rel="manifest" href="/manifest.json?v=8">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
@@ -23,7 +23,9 @@ HTML_TEMPLATE = """
         
         /* Dynamic Theme Styles */
         body { background-color: #0f0f0f; color: #f1f1f1; overflow-x: hidden; background-size: cover; background-position: center; background-attachment: fixed; }
-        body::before { content: ""; position: fixed; inset: 0; background: var(--bg-overlay, rgba(15, 15, 15, 0.92)); z-index: -1; transition: background 0.3s; }
+        
+        /* Overlay Transparansi Background */
+        #bg-overlay-layer { position: fixed; inset: 0; background: rgba(15, 15, 15, var(--bg-alpha, 0.92)); z-index: -1; pointer-events: none; transition: background 0.3s; }
 
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -31,7 +33,7 @@ HTML_TEMPLATE = """
         a { text-decoration: none; color: inherit; }
 
         /* ===== HEADER ===== */
-        #header { position: fixed; top: 0; left: 0; right: 0; height: 56px; background: var(--header-bg, #0f0f0f); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 100; border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.3s; }
+        #header { position: fixed; top: 0; left: 0; right: 0; height: 56px; background: rgba(15, 15, 15, var(--header-alpha, 0.98)); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 100; border-bottom: 1px solid rgba(255,255,255,0.05); backdrop-filter: blur(10px); }
         .header-left { display: flex; align-items: center; gap: 16px; }
         .yt-logo { display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; }
         .yt-logo-text { font-size: 20px; font-weight: 700; letter-spacing: -1px; margin-left: 2px; }
@@ -48,14 +50,14 @@ HTML_TEMPLATE = """
         .search-btn-desk { height: 40px; width: 64px; border: 1px solid #303030; border-radius: 0 20px 20px 0; background: #222; color: #fff; cursor: pointer; }
         
         /* Search Form Mobile */
-        .search-form-mobile { display: none; position: absolute; inset: 0; background: var(--header-bg, #0f0f0f); padding: 0 12px; align-items: center; gap: 12px; z-index: 110; }
+        .search-form-mobile { display: none; position: absolute; inset: 0; background: rgba(15, 15, 15, 0.98); padding: 0 12px; align-items: center; gap: 12px; z-index: 110; }
         .search-form-mobile.active { display: flex; }
         .search-input-wrap-mob { flex: 1; display: flex; align-items: center; background: rgba(34,34,34,0.8); border-radius: 20px; padding: 0 16px; height: 36px; }
         .search-input-wrap-mob input { flex: 1; background: transparent; border: none; color: #fff; font-size: 15px; outline: none; }
         .search-btn-mobile-toggle { display: none; background: transparent; border: none; color: #fff; cursor: pointer; padding: 8px; }
 
         /* ===== SIDEBAR (DESKTOP) ===== */
-        #sidebar { position: fixed; top: 56px; left: 0; width: 240px; height: calc(100vh - 56px); background: var(--header-bg, #0f0f0f); overflow-y: auto; padding: 12px 0; z-index: 90; transition: background 0.3s; }
+        #sidebar { position: fixed; top: 56px; left: 0; width: 240px; height: calc(100vh - 56px); background: rgba(15, 15, 15, var(--header-alpha, 0.98)); overflow-y: auto; padding: 12px 0; z-index: 90; backdrop-filter: blur(10px); }
         .sidebar-item { display: flex; align-items: center; gap: 24px; padding: 0 12px; height: 40px; cursor: pointer; border-radius: 10px; margin: 0 12px; transition: background 0.15s; }
         .sidebar-item:hover { background: rgba(255,255,255,0.1); }
         .sidebar-item.active { background: rgba(255,255,255,0.15); font-weight: 500; }
@@ -64,7 +66,7 @@ HTML_TEMPLATE = """
         .sidebar-divider { height: 1px; background: rgba(255,255,255,0.1); margin: 12px 0; }
 
         /* ===== BOTTOM NAV (MOBILE) ===== */
-        #bottom-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: 50px; background: var(--header-bg, #0f0f0f); border-top: 1px solid rgba(255,255,255,0.05); z-index: 100; justify-content: space-around; align-items: center; transition: background 0.3s; }
+        #bottom-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: 50px; background: rgba(15, 15, 15, var(--header-alpha, 0.98)); border-top: 1px solid rgba(255,255,255,0.05); z-index: 100; justify-content: space-around; align-items: center; backdrop-filter: blur(10px); }
         .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; flex: 1; height: 100%; cursor: pointer; }
         .nav-item .material-icons-outlined, .nav-item .material-icons { font-size: 24px; }
         .nav-item .nav-label { font-size: 10px; margin-top: 3px; }
@@ -74,7 +76,8 @@ HTML_TEMPLATE = """
         /* ===== MAIN CONTENT & GRID ===== */
         #main { margin-left: 240px; margin-top: 56px; padding: 24px; min-height: 100vh; }
         
-        .chips-wrapper { position: sticky; top: 56px; background: transparent; z-index: 10; padding: 12px 0; margin-bottom: 24px; }
+        /* DIPERBAIKI: Posisi sticky disesuaikan tepat di bawah header (56px) dan diberi background solid/transparan agar teks video tidak tembus pandang */
+        .chips-wrapper { position: sticky; top: 56px; background: rgba(15, 15, 15, var(--header-alpha, 0.98)); z-index: 95; padding: 12px 0; margin-bottom: 24px; backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.03); }
         .chips-bar { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; }
         .chips-bar::-webkit-scrollbar { display: none; }
         .chip { padding: 6px 12px; border-radius: 8px; font-size: 14px; font-weight: 500; white-space: nowrap; border: none; background: rgba(39,39,39,0.8); color: #f1f1f1; cursor: pointer; backdrop-filter: blur(5px); }
@@ -199,6 +202,8 @@ HTML_TEMPLATE = """
     </style>
 </head>
 <body>
+
+<div id="bg-overlay-layer"></div>
 
 <header id="header">
     <div class="header-left">
@@ -326,13 +331,12 @@ HTML_TEMPLATE = """
 <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js?v=7').then(reg => {
+            navigator.serviceWorker.register('/sw.js?v=8').then(reg => {
                 reg.update();
             });
         });
     }
 
-    // Terapkan Tema yang Disimpan Saat Halaman Dimuat
     window.addEventListener('DOMContentLoaded', () => {
         loadThemeSettings();
         loadHome();
@@ -363,7 +367,7 @@ HTML_TEMPLATE = """
             try {
                 const theme = JSON.parse(saved);
                 document.getElementById('bg-url-input').value = theme.url || '';
-                document.getElementById('bg-opacity-range').value = (theme.opacity || 0.92) * 100;
+                document.getElementById('bg-opacity-range').value = Math.round((theme.opacity || 0.92) * 100);
                 document.getElementById('opacity-val').textContent = Math.round((theme.opacity || 0.92) * 100);
                 applyTheme(theme);
             } catch(e){}
@@ -377,8 +381,8 @@ HTML_TEMPLATE = """
             document.body.style.backgroundImage = 'none';
         }
         const alpha = theme.opacity !== undefined ? theme.opacity : 0.92;
-        document.documentElement.style.setProperty('--bg-overlay', `rgba(15, 15, 15, ${alpha})`);
-        document.documentElement.style.setProperty('--header-bg', `rgba(15, 15, 15, ${Math.min(alpha + 0.05, 1)})`);
+        document.documentElement.style.setProperty('--bg-alpha', alpha);
+        document.documentElement.style.setProperty('--header-alpha', Math.min(alpha + 0.05, 1));
     }
 
     let deferredPrompt;
