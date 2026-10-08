@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, render_template_string, request
 import scrapetube
 import random
+import json
 
 app = Flask(__name__)
 
@@ -11,8 +12,9 @@ HTML_TEMPLATE = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0f0f0f">
-    <title>YouTube Clone Responsive</title>
-    <link rel="manifest" href="/manifest.json">
+    <title>YouTube Premium Clone</title>
+    <!-- Tambahkan v=3 untuk memaksa Chrome memuat ulang manifest terbaru -->
+    <link rel="manifest" href="/manifest.json?v=3">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
@@ -202,6 +204,9 @@ HTML_TEMPLATE = """
 
     <div class="header-right">
         <button class="search-btn-mobile-toggle" onclick="toggleMobileSearch(true)"><span class="material-icons-outlined">search</span></button>
+        <!-- TOMBOL INSTAL PWA (Hanya muncul jika bisa diinstal) -->
+        <button class="header-icon" id="installAppBtn" style="display:none; color:#3ea6ff;" title="Instal Aplikasi"><span class="material-icons-outlined">install_mobile</span></button>
+        
         <button class="header-icon"><span class="material-icons-outlined">cast</span></button>
         <button class="header-icon"><span class="material-icons-outlined">notifications_none</span></button>
         <div class="nav-avatar" style="margin-left:8px; width:32px; height:32px;">t</div>
@@ -209,7 +214,11 @@ HTML_TEMPLATE = """
     
     <form class="search-form-mobile" id="mobile-search-form" onsubmit="searchVideos(event, 'mobile')">
         <button type="button" class="header-icon" onclick="toggleMobileSearch(false)"><span class="material-icons-outlined">arrow_back</span></button>
-        <div class="search-input-wrap-mob"><input type="text" id="keyword-mobile" placeholder="Telusuri YouTube" autocomplete="off"></div>
+        <div class="search-input-wrap-mob">
+            <input type="text" id="keyword-mobile" placeholder="Telusuri YouTube" autocomplete="off">
+        </div>
+        <!-- Tombol submit pencarian di mobile -->
+        <button type="submit" class="header-icon"><span class="material-icons-outlined">search</span></button>
         <button type="button" class="header-icon" style="background:#222; border-radius:50%; width:36px; height:36px;"><span class="material-icons-outlined" style="font-size:20px;">mic</span></button>
     </form>
 </header>
@@ -298,12 +307,42 @@ HTML_TEMPLATE = """
 </nav>
 
 <script>
-    // PWA Service Worker Registration
+    // ===== PWA Service Worker & Install Button Logic =====
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js');
+            navigator.serviceWorker.register('/sw.js?v=3').then(reg => {
+                reg.update();
+            });
         });
     }
+
+    let deferredPrompt;
+    const installBtn = document.getElementById('installAppBtn');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        // Mencegah Chrome memunculkan prompt mini infobar otomatis
+        e.preventDefault();
+        deferredPrompt = e;
+        // Munculkan tombol instal khusus kita di header
+        installBtn.style.display = 'block';
+    });
+
+    installBtn.addEventListener('click', async () => {
+        if (deferredPrompt !== null) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                console.log('User menginstal aplikasi');
+            }
+            deferredPrompt = null;
+            installBtn.style.display = 'none';
+        }
+    });
+
+    window.addEventListener('appinstalled', () => {
+        installBtn.style.display = 'none';
+    });
+    // =====================================================
 
     let currentQuery = '';
     let currentOffset = 0;
@@ -318,13 +357,11 @@ HTML_TEMPLATE = """
     
     // Infinite Scroll Logic
     window.addEventListener('scroll', () => {
-        // Scroll di Beranda/Main
         if (!isLoadingMore && document.getElementById('main').style.display === 'block') {
             if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 300) {
                 loadMoreData();
             }
         }
-        // Scroll di halaman Player (Muat video serupa)
         else if (!isRelatedLoading && document.getElementById('player-section').style.display === 'block') {
             if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 300) {
                 loadMoreRelated();
@@ -359,13 +396,23 @@ HTML_TEMPLATE = """
         e.preventDefault(); 
         const inputEl = document.getElementById(source === 'desktop' ? 'keyword-desktop' : 'keyword-mobile');
         const q = inputEl.value.trim();
-        document.getElementById('keyword-desktop').value = q; document.getElementById('keyword-mobile').value = q;
+        document.getElementById('keyword-desktop').value = q; 
+        document.getElementById('keyword-mobile').value = q;
+        
         if (q) { 
             activateNav(document.querySelector('.nav-item')); 
-            currentQuery = q; currentOffset = 0; 
-            if(source === 'mobile') toggleMobileSearch(false); 
+            currentQuery = q; 
+            currentOffset = 0; 
+            
+            // Hapus form di mobile dinonaktifkan agar form ketik tidak hilang saat mencari
+            
             showSkeletons();
-            fetch('/api/search?q=' + encodeURIComponent(q)).then(r=>r.json()).then(d => { currentOffset=d.length; renderGrid(d); });
+            fetch('/api/search?q=' + encodeURIComponent(q))
+                .then(r => r.json())
+                .then(d => { 
+                    currentOffset = d.length; 
+                    renderGrid(d); 
+                });
         }
     }
 
@@ -409,12 +456,10 @@ HTML_TEMPLATE = """
         document.getElementById('player-channel-name').textContent = v.channel || 'Channel Name';
         document.getElementById('player-channel-avatar').src = v.avatar || '';
         
-        // Menambahkan parameter allow picture-in-picture untuk efek background play
         document.getElementById('player-box').innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
         
         document.getElementById('player-section').style.display = 'block'; window.scrollTo(0,0);
 
-        // Siapkan untuk memuat video serupa
         currentRelatedKeyword = v.title.split(' ').slice(0, 3).join(' ');
         currentRelatedOffset = 0;
         document.getElementById('related-videos-container').innerHTML = '';
@@ -427,7 +472,6 @@ HTML_TEMPLATE = """
         const container = document.getElementById('related-videos-container');
         
         if (isFirstLoad) {
-            // Skeleton animasi loading untuk video serupa
             container.innerHTML = Array(4).fill(`<div class="skeleton-card"><div class="skeleton-thumb"></div><div class="skeleton-info"><div class="skeleton-line" style="width: 90%;"></div><div class="skeleton-line" style="width: 60%;"></div></div></div>`).join('');
         } else {
             document.getElementById('related-scroll-loader').style.display = 'flex';
@@ -437,7 +481,7 @@ HTML_TEMPLATE = """
             const res = await fetch(`/api/search?q=${encodeURIComponent(currentRelatedKeyword)}&offset=${currentRelatedOffset}`);
             const data = await res.json();
             
-            if (isFirstLoad) container.innerHTML = ''; // Hapus skeleton setelah data dapat
+            if (isFirstLoad) container.innerHTML = ''; 
             
             if (data.length > 0) {
                 currentRelatedOffset += data.length;
@@ -508,10 +552,10 @@ def home(): return render_template_string(HTML_TEMPLATE)
 # ===== ROUTES UNTUK PWA =====
 @app.route("/manifest.json")
 def manifest():
-    return jsonify({
+    manifest_data = {
         "name": "YouTube Premium Clone",
         "short_name": "Premium",
-        "start_url": "/",
+        "start_url": "/?mode=pwa",
         "display": "standalone",
         "background_color": "#0f0f0f",
         "theme_color": "#0f0f0f",
@@ -519,15 +563,19 @@ def manifest():
             {
                 "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/192px-YouTube_full-color_icon_%282017%29.svg.png",
                 "sizes": "192x192",
-                "type": "image/png"
+                "type": "image/png",
+                "purpose": "any maskable"
             },
             {
                 "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/512px-YouTube_full-color_icon_%282017%29.svg.png",
                 "sizes": "512x512",
-                "type": "image/png"
+                "type": "image/png",
+                "purpose": "any maskable"
             }
         ]
-    })
+    }
+    # Kirim dengan mimetype yang diwajibkan Chrome agar valid
+    return app.response_class(json.dumps(manifest_data), mimetype='application/manifest+json')
 
 @app.route("/sw.js")
 def service_worker():
@@ -535,7 +583,7 @@ def service_worker():
     self.addEventListener('install', (e) => { self.skipWaiting(); });
     self.addEventListener('activate', (e) => { self.clients.claim(); });
     self.addEventListener('fetch', (e) => { 
-        // Chrome wajib mendeteksi response di sini agar PWA valid
+        // Chrome wajib mendeteksi response fetch agar PWA valid
         e.respondWith(fetch(e.request).catch(() => new Response('Offline')));
     });
     """
