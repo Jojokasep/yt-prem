@@ -2,6 +2,11 @@ from flask import Flask, jsonify, render_template_string, request
 import scrapetube
 import random
 import json
+import logging
+from functools import lru_cache
+
+# Konfigurasi Logging untuk error handling
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 app = Flask(__name__)
 
@@ -13,8 +18,7 @@ HTML_TEMPLATE = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0f0f0f">
     <title>YouTube Premium Clone</title>
-    <!-- Versi manifest dinaikkan ke v=6 -->
-    <link rel="manifest" href="/manifest.json?v=6">
+    <link rel="manifest" href="/manifest.json?v=7">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
@@ -34,7 +38,7 @@ HTML_TEMPLATE = """
         .yt-logo-text { font-size: 20px; font-weight: 700; letter-spacing: -1px; margin-left: 2px; }
         
         .header-right { display: flex; align-items: center; gap: 12px; }
-        .header-icon { background: transparent; border: none; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 8px; border-radius: 50%; }
+        .header-icon { background: transparent; border: none; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 10px; border-radius: 50%; min-width: 44px; min-height: 44px; }
         .header-icon:hover { background: rgba(255,255,255,0.1); }
         .header-icon .material-icons-outlined { font-size: 24px; }
         
@@ -47,9 +51,9 @@ HTML_TEMPLATE = """
         /* Search Form Mobile */
         .search-form-mobile { display: none; position: absolute; inset: 0; background: #0f0f0f; padding: 0 12px; align-items: center; gap: 12px; z-index: 110; }
         .search-form-mobile.active { display: flex; }
-        .search-input-wrap-mob { flex: 1; display: flex; align-items: center; background: #222; border-radius: 20px; padding: 0 16px; height: 36px; }
+        .search-input-wrap-mob { flex: 1; display: flex; align-items: center; background: #222; border-radius: 20px; padding: 0 16px; height: 38px; }
         .search-input-wrap-mob input { flex: 1; background: transparent; border: none; color: #fff; font-size: 15px; outline: none; }
-        .search-btn-mobile-toggle { display: none; background: transparent; border: none; color: #fff; cursor: pointer; padding: 8px; }
+        .search-btn-mobile-toggle { display: none; background: transparent; border: none; color: #fff; cursor: pointer; padding: 8px; min-width: 44px; min-height: 44px; }
 
         /* ===== SIDEBAR (DESKTOP) ===== */
         #sidebar { position: fixed; top: 56px; left: 0; width: 240px; height: calc(100vh - 56px); background: #0f0f0f; overflow-y: auto; padding: 12px 0; z-index: 90; }
@@ -62,7 +66,7 @@ HTML_TEMPLATE = """
 
         /* ===== BOTTOM NAV (MOBILE) ===== */
         #bottom-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: 50px; background: #0f0f0f; border-top: 1px solid rgba(255,255,255,0.05); z-index: 100; justify-content: space-around; align-items: center; }
-        .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; flex: 1; height: 100%; cursor: pointer; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; flex: 1; height: 100%; cursor: pointer; min-width: 44px; min-height: 44px; }
         .nav-item .material-icons-outlined, .nav-item .material-icons { font-size: 24px; }
         .nav-item .nav-label { font-size: 10px; margin-top: 3px; }
         .nav-avatar { width: 24px; height: 24px; border-radius: 50%; background: #ff4e45; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; border: 2px solid transparent; }
@@ -74,7 +78,7 @@ HTML_TEMPLATE = """
         .chips-wrapper { position: sticky; top: 56px; background: #0f0f0f; z-index: 10; padding: 12px 0; margin-bottom: 24px; }
         .chips-bar { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; }
         .chips-bar::-webkit-scrollbar { display: none; }
-        .chip { padding: 6px 12px; border-radius: 8px; font-size: 14px; font-weight: 500; white-space: nowrap; border: none; background: #272727; color: #f1f1f1; cursor: pointer; }
+        .chip { padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 500; white-space: nowrap; border: none; background: #272727; color: #f1f1f1; cursor: pointer; min-height: 40px; }
         .chip.active { background: #f1f1f1; color: #0f0f0f; }
 
         .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 40px 16px; }
@@ -106,10 +110,10 @@ HTML_TEMPLATE = """
         .channel-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; }
         .channel-info { display: flex; align-items: center; gap: 12px; }
         .channel-name { font-weight: 600; font-size: 16px; }
-        .btn-subscribe { background: #f1f1f1; color: #0f0f0f; font-weight: 600; border: none; padding: 10px 20px; border-radius: 20px; font-size: 14px; cursor: pointer; }
+        .btn-subscribe { background: #f1f1f1; color: #0f0f0f; font-weight: 600; border: none; padding: 10px 20px; border-radius: 20px; font-size: 14px; cursor: pointer; min-height: 40px; }
         
         .action-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
-        .action-pill { display: flex; align-items: center; gap: 6px; background: #272727; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+        .action-pill { display: flex; align-items: center; gap: 6px; background: #272727; padding: 10px 18px; border-radius: 20px; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; min-height: 40px; }
         .action-pill:hover { background: #3f3f3f; }
         
         .comments-box { background: #272727; border-radius: 12px; padding: 16px; margin-top: 16px; }
@@ -130,7 +134,7 @@ HTML_TEMPLATE = """
         .profile-avatar { width: 72px; height: 72px; border-radius: 50%; background: #ff4e45; color: #fff; font-size: 32px; display: flex; align-items: center; justify-content: center; }
         .profile-name { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
         .profile-handle { font-size: 14px; color: #aaa; margin-bottom: 12px; }
-        .profile-btn { background: #272727; border: none; color: #fff; padding: 6px 12px; border-radius: 16px; font-size: 13px; font-weight: 500; cursor: pointer; }
+        .profile-btn { background: #272727; border: none; color: #fff; padding: 8px 16px; border-radius: 16px; font-size: 13px; font-weight: 500; cursor: pointer; min-height: 36px; }
         
         .horizontal-list { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 16px; scrollbar-width: none; }
         .horizontal-list::-webkit-scrollbar { display: none; }
@@ -139,6 +143,10 @@ HTML_TEMPLATE = """
         .hist-title { font-size: 14px; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 4px; }
         .hist-channel { font-size: 13px; color: #aaa; }
         
+        /* Scroll to Top Button */
+        #scrollTopBtn { display: none; position: fixed; bottom: 70px; right: 20px; background: #272727; color: #fff; border: none; width: 44px; height: 44px; border-radius: 50%; align-items: center; justify-content: center; cursor: pointer; z-index: 99; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        #scrollTopBtn:hover { background: #3f3f3f; }
+
         /* Loaders */
         .loader-container { display: none; justify-content: center; padding: 20px 0; width: 100%; }
         .spinner { width: 32px; height: 32px; border: 3px solid #333; border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
@@ -183,6 +191,7 @@ HTML_TEMPLATE = """
             #profile-section { margin-left: 0; padding: 0; padding-bottom: 60px; }
             .profile-header { padding: 24px 16px; margin-bottom: 0; }
             .horizontal-list { padding: 0 16px 16px; }
+            #scrollTopBtn { bottom: 65px; right: 15px; }
         }
     </style>
 </head>
@@ -272,330 +281,4 @@ HTML_TEMPLATE = """
         
         <div class="related-col">
             <div class="related-title">Video Serupa</div>
-            <div id="related-videos-container" style="display: flex; flex-direction: column; gap: 10px;"></div>
-            <div class="loader-container" id="related-scroll-loader"><div class="spinner"></div></div>
-        </div>
-    </div>
-</div>
-
-<div id="profile-section">
-    <div class="profile-header">
-        <div class="profile-avatar">t</div>
-        <div>
-            <div class="profile-name">teu apal</div>
-            <div class="profile-handle">@teuapal • <span style="color: #ff4e45; font-weight: 500;">Anggota Premium</span></div>
-            <button class="profile-btn">Buat channel</button>
-        </div>
-    </div>
-    <div style="padding: 16px; font-size: 18px; font-weight: 700;">Histori</div>
-    <div class="horizontal-list" id="history-scroll"></div>
-</div>
-
-<nav id="bottom-nav">
-    <div class="nav-item active" onclick="goHome(event, this)"><span class="material-icons-outlined">home</span><span class="nav-label">Beranda</span></div>
-    <div class="nav-item" onclick="showProfile(this)"><div class="nav-avatar">t</div><span class="nav-label">Anda</span></div>
-</nav>
-
-<script>
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js?v=6').then(reg => {
-                reg.update();
-            });
-        });
-    }
-
-    let deferredPrompt;
-    const installBtn = document.getElementById('installAppBtn');
-
-    window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        installBtn.style.display = 'block';
-    });
-
-    installBtn.addEventListener('click', async () => {
-        if (deferredPrompt !== null) {
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            if (outcome === 'accepted') {
-                console.log('User menginstal aplikasi');
-            }
-            deferredPrompt = null;
-            installBtn.style.display = 'none';
-        }
-    });
-
-    window.addEventListener('appinstalled', () => {
-        installBtn.style.display = 'none';
-    });
-
-    let currentQuery = '';
-    let currentOffset = 0;
-    let isLoadingMore = false;
-    
-    let currentRelatedKeyword = '';
-    let currentRelatedOffset = 0;
-    let isRelatedLoading = false;
-    
-    window.addEventListener('DOMContentLoaded', () => { loadHome(); });
-    
-    window.addEventListener('scroll', () => {
-        if (!isLoadingMore && document.getElementById('main').style.display === 'block') {
-            if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 300) {
-                loadMoreData();
-            }
-        }
-        else if (!isRelatedLoading && document.getElementById('player-section').style.display === 'block') {
-            if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 300) {
-                loadMoreRelated();
-            }
-        }
-    });
-
-    async function loadHome() {
-        showSkeletons();
-        currentQuery = ''; currentOffset = 0;
-        document.getElementById('keyword-desktop').value = '';
-        document.getElementById('keyword-mobile').value = '';
-        try { const res = await fetch('/api/home'); const data = await res.json(); renderGrid(data); } catch(e){}
-    }
-
-    async function loadMoreData() {
-        isLoadingMore = true; document.getElementById('main-scroll-loader').style.display = 'flex';
-        try {
-            let fetchUrl = currentQuery ? `/api/search?q=${encodeURIComponent(currentQuery)}&offset=${currentOffset}` : '/api/home';
-            const res = await fetch(fetchUrl); const data = await res.json();
-            if (data.length > 0) { currentOffset += data.length; appendToGrid(data); }
-        } catch(e){} finally { isLoadingMore = false; document.getElementById('main-scroll-loader').style.display = 'none'; }
-    }
-
-    function toggleMobileSearch(show) {
-        const form = document.getElementById('mobile-search-form');
-        const input = document.getElementById('keyword-mobile');
-        if (show) { form.classList.add('active'); input.focus(); } else { form.classList.remove('active'); }
-    }
-
-    function searchVideos(e, source) {
-        e.preventDefault(); 
-        const inputEl = document.getElementById(source === 'desktop' ? 'keyword-desktop' : 'keyword-mobile');
-        const q = inputEl.value.trim();
-        document.getElementById('keyword-desktop').value = q; 
-        document.getElementById('keyword-mobile').value = q;
-        
-        if (q) { 
-            activateNav(document.querySelector('.nav-item')); 
-            currentQuery = q; 
-            currentOffset = 0; 
-            
-            showSkeletons();
-            fetch('/api/search?q=' + encodeURIComponent(q))
-                .then(r => r.json())
-                .then(d => { 
-                    currentOffset = d.length; 
-                    renderGrid(d); 
-                });
-        }
-    }
-
-    function chipClick(btn, query) {
-        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active')); btn.classList.add('active');
-        document.getElementById('keyword-desktop').value = query; document.getElementById('keyword-mobile').value = query;
-        if (query) { currentQuery = query; currentOffset = 0; showSkeletons(); fetch('/api/search?q=' + encodeURIComponent(query)).then(r=>r.json()).then(d => { currentOffset=d.length; renderGrid(d); }); } 
-        else loadHome();
-    }
-
-    function activateNav(el) {
-        if(!el) return;
-        document.querySelectorAll('.nav-item, .sidebar-item').forEach(n => n.classList.remove('active')); el.classList.add('active');
-        document.getElementById('main').style.display = 'block';
-        document.getElementById('player-section').style.display = 'none';
-        document.getElementById('profile-section').style.display = 'none';
-        document.getElementById('player-box').innerHTML = ''; 
-    }
-
-    function goHome(e, el) { if (e) e.preventDefault(); activateNav(el || document.querySelector('.nav-item')); document.getElementById('chips-container').style.display = 'block'; loadHome(); }
-
-    function showProfile(el) {
-        activateNav(el); document.getElementById('main').style.display = 'none'; document.getElementById('profile-section').style.display = 'block';
-        const hist = JSON.parse(localStorage.getItem('yt_history') || '[]');
-        const container = document.getElementById('history-scroll');
-        if(hist.length === 0) { container.innerHTML = '<div style="color:#aaa; font-size:13px; padding-left:16px;">Belum ada histori tontonan.</div>'; return; }
-        container.innerHTML = hist.slice(0,10).map(v => `<div class="hist-card" onclick="playVideo('${encodeURIComponent(JSON.stringify(v))}')"><img src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" class="hist-thumb"><div class="hist-title">${v.title}</div><div class="hist-channel">${v.channel}</div></div>`).join('');
-    }
-
-    function playVideo(videoStr) {
-        let v; try { v = JSON.parse(decodeURIComponent(videoStr)); } catch(e){ return; }
-        let hist = JSON.parse(localStorage.getItem('yt_history') || '[]'); hist = hist.filter(x => x.id !== v.id); hist.unshift(v);
-        if(hist.length > 50) hist.pop(); localStorage.setItem('yt_history', JSON.stringify(hist));
-
-        toggleMobileSearch(false);
-
-        document.getElementById('main').style.display = 'none';
-        document.getElementById('profile-section').style.display = 'none';
-        
-        document.getElementById('player-title').textContent = v.title;
-        document.getElementById('player-channel-name').textContent = v.channel || 'Channel Name';
-        document.getElementById('player-channel-avatar').src = v.avatar || '';
-        
-        document.getElementById('player-box').innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
-        
-        document.getElementById('player-section').style.display = 'block'; window.scrollTo(0,0);
-
-        currentRelatedKeyword = v.title.split(' ').slice(0, 3).join(' ');
-        currentRelatedOffset = 0;
-        document.getElementById('related-videos-container').innerHTML = '';
-        loadMoreRelated(true);
-    }
-
-    async function loadMoreRelated(isFirstLoad = false) {
-        if(isRelatedLoading) return;
-        isRelatedLoading = true;
-        const container = document.getElementById('related-videos-container');
-        
-        if (isFirstLoad) {
-            container.innerHTML = Array(4).fill(`<div class="skeleton-card"><div class="skeleton-thumb"></div><div class="skeleton-info"><div class="skeleton-line" style="width: 90%;"></div><div class="skeleton-line" style="width: 60%;"></div></div></div>`).join('');
-        } else {
-            document.getElementById('related-scroll-loader').style.display = 'flex';
-        }
-
-        try {
-            const res = await fetch(`/api/search?q=${encodeURIComponent(currentRelatedKeyword)}&offset=${currentRelatedOffset}`);
-            const data = await res.json();
-            
-            if (isFirstLoad) container.innerHTML = ''; 
-            
-            if (data.length > 0) {
-                currentRelatedOffset += data.length;
-                const html = data.map(item => {
-                    const itemStr = encodeURIComponent(JSON.stringify(item));
-                    let meta = [item.channel, item.views].filter(Boolean).join(' • ');
-                    return `<div class="related-card" onclick="playVideo('${itemStr}')"><div class="related-thumb"><img src="https://i.ytimg.com/vi/${item.id}/mqdefault.jpg" loading="lazy">${item.duration ? '<span class="duration-badge">' + item.duration + '</span>' : ''}</div><div class="related-info"><div class="related-vid-title">${item.title}</div><div class="related-vid-channel">${item.channel || ''}</div><div class="related-vid-meta">${meta}</div></div></div>`;
-                }).join('');
-                container.insertAdjacentHTML('beforeend', html);
-            } else if (isFirstLoad) {
-                container.innerHTML = '<div style="color:#aaa; font-size:13px;">Tidak ada video serupa.</div>';
-            }
-        } catch(e) {
-            if(isFirstLoad) container.innerHTML = '<div style="color:#aaa; font-size:13px;">Gagal memuat video serupa.</div>';
-        } finally {
-            isRelatedLoading = false;
-            document.getElementById('related-scroll-loader').style.display = 'none';
-        }
-    }
-
-    function showSkeletons() { document.getElementById('video-grid').innerHTML = Array(8).fill(`<div class="vid-card"><div class="thumb-wrap" style="background:#272727; animation: pulse 1.5s infinite;"></div><div class="vid-info"><div class="channel-avatar" style="animation: pulse 1.5s infinite;"></div><div class="vid-text"><div style="height:14px; background:#272727; margin-bottom:8px; width:90%; border-radius:4px; animation: pulse 1.5s infinite;"></div><div style="height:12px; background:#272727; width:60%; border-radius:4px; animation: pulse 1.5s infinite;"></div></div></div></div>`).join(''); }
-
-    function renderGrid(data) { const g = document.getElementById('video-grid'); g.innerHTML = ''; appendToGrid(data); }
-
-    function appendToGrid(data) {
-        const g = document.getElementById('video-grid');
-        data.forEach(v => {
-            const card = document.createElement('div'); card.className = 'vid-card';
-            card.onclick = () => playVideo(encodeURIComponent(JSON.stringify(v)));
-            let avatarHtml = v.avatar ? `<div class="channel-avatar"><img src="${v.avatar}"></div>` : `<div class="channel-avatar">${v.channel ? v.channel.charAt(0).toUpperCase() : '?'}</div>`;
-            card.innerHTML = `<div class="thumb-wrap"><img class="thumb-img" src="https://i.ytimg.com/vi/${v.id}/hqdefault.jpg" loading="lazy">${v.duration ? '<span class="duration-badge">' + v.duration + '</span>' : ''}</div><div class="vid-info">${avatarHtml}<div class="vid-text"><div class="vid-title">${v.title}</div><div class="vid-meta">${[v.channel, v.views, v.published].filter(Boolean).join(' • ')}</div></div></div>`;
-            g.appendChild(card);
-        });
-    }
-</script>
-</body>
-</html>
-"""
-
-def extract_video_data(video):
-    data = {"id": video.get("videoId"), "title": "No Title"}
-    try: 
-        runs = video.get("title", {}).get("runs")
-        if runs: data["title"] = runs[0].get("text", "No Title")
-    except Exception: pass
-    try: data["duration"] = video.get("lengthText", {}).get("simpleText", "")
-    except Exception: pass
-    try: data["views"] = video.get("viewCountText", {}).get("simpleText", "")
-    except Exception: pass
-    try: data["published"] = video.get("publishedTimeText", {}).get("simpleText", "")
-    except Exception: pass
-    try:
-        byline = video.get("longBylineText") or video.get("ownerText")
-        if byline:
-            run = byline.get("runs", [{}])[0]
-            data["channel"] = run.get("text", "")
-            data["channelUrl"] = run.get("navigationEndpoint", {}).get("commandMetadata", {}).get("webCommandMetadata", {}).get("url", "")
-    except Exception: data["channel"] = ""; data["channelUrl"] = ""
-    try:
-        avatar_thumbs = video.get("channelThumbnailSupportedRenderers", {}).get("channelThumbnailWithLinkRenderer", {}).get("thumbnail", {}).get("thumbnails", [])
-        if avatar_thumbs: data["avatar"] = avatar_thumbs[0].get("url", "")
-    except Exception: data["avatar"] = ""
-    return data
-
-@app.route("/")
-def home(): return render_template_string(HTML_TEMPLATE)
-
-@app.route("/manifest.json")
-def manifest():
-    manifest_data = {
-        "name": "YouTube Premium Clone",
-        "short_name": "Premium",
-        "start_url": "/?mode=pwa",
-        "display": "standalone",
-        "background_color": "#0f0f0f",
-        "theme_color": "#0f0f0f",
-        "icons": [
-            {
-                "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/192px-YouTube_full-color_icon_%282017%29.svg.png",
-                "sizes": "192x192",
-                "type": "image/png",
-                "purpose": "any maskable"
-            },
-            {
-                "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/512px-YouTube_full-color_icon_%282017%29.svg.png",
-                "sizes": "512x512",
-                "type": "image/png",
-                "purpose": "any maskable"
-            }
-        ]
-    }
-    return app.response_class(json.dumps(manifest_data), mimetype='application/manifest+json')
-
-@app.route("/sw.js")
-def service_worker():
-    js = """
-    self.addEventListener('install', (e) => { self.skipWaiting(); });
-    self.addEventListener('activate', (e) => { self.clients.claim(); });
-    self.addEventListener('fetch', (e) => { 
-        e.respondWith(fetch(e.request).catch(() => new Response('Offline')));
-    });
-    """
-    return app.response_class(js, mimetype='application/javascript')
-
-@app.route("/api/home")
-def api_home():
-    results = []
-    try:
-        base_keywords = ["Viral", "Hits Indonesia", "Trending Video", "Podcast Terbaru", "Gaming"]
-        random_keyword = random.choice(base_keywords)
-        videos = scrapetube.get_search(random_keyword, limit=15)
-        for v in videos:
-            d = extract_video_data(v)
-            if d.get("id"): results.append(d)
-        random.shuffle(results)
-    except Exception: pass
-    return jsonify(results)
-
-@app.route("/api/search")
-def api_search():
-    query = request.args.get("q", "").strip()
-    offset = int(request.args.get("offset", 0))
-    limit = 15; results = []
-    if not query: return jsonify(results)
-    try:
-        videos = scrapetube.get_search(query, limit=offset+limit)
-        for i, v in enumerate(videos):
-            if i >= offset:
-                d = extract_video_data(v)
-                if d.get("id"): results.append(d)
-    except Exception: pass
-    return jsonify(results)
-
-if __name__ == "__main__":
-    app.run(debug=True, port=2000)
+            <div id="related-videos-container" style="display: flex; flex-direction: column; gap
