@@ -17,7 +17,7 @@ HTML_TEMPLATE = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0f0f0f">
     <title>YouTube Premium Clone</title>
-    <link rel="manifest" href="/manifest.json?v=11">
+    <link rel="manifest" href="/manifest.json?v=13">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
@@ -102,7 +102,7 @@ HTML_TEMPLATE = """
         
         .player-main-col { width: 100%; }
         .player-container { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden; }
-        .player-container iframe { width: 100%; height: 100%; border: none; }
+        .player-container iframe { width: 100%; height: 100%; border: none; display: block; }
         
         .player-meta { padding: 16px 0; }
         .player-title { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
@@ -184,9 +184,9 @@ HTML_TEMPLATE = """
             .vid-title { font-size: 15px; }
             .vid-meta { font-size: 13px; }
             
-            #player-section { margin-left: 0; padding: 0; padding-bottom: 60px; max-width: 100%; }
-            /* DIPERBAIKI: top diubah dari 0 ke 56px agar berhenti tepat di bawah header */
-            .player-container { border-radius: 0; position: sticky; top: 56px; z-index: 95; }
+            #player-section { margin-left: 0; margin-top: 0; padding: 0; padding-bottom: 60px; max-width: 100%; width: 100%; overflow: hidden; }
+            /* DIPERBAIKI: Mengunci lebar player container agar tidak melebihi layar HP */
+            .player-container { width: 100%; max-width: 100vw; border-radius: 0; position: sticky; top: 56px; z-index: 95; }
             .player-meta { padding: 12px 16px; }
             .player-title { font-size: 18px; }
             .related-col { padding: 0 16px; }
@@ -316,7 +316,7 @@ HTML_TEMPLATE = """
 <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js?v=11').then(reg => {
+            navigator.serviceWorker.register('/sw.js?v=13').then(reg => {
                 reg.update();
             });
         });
@@ -666,7 +666,7 @@ def manifest():
 @app.route("/sw.js")
 def service_worker():
     js = """
-    const CACHE_NAME = 'yt-clone-v11';
+    const CACHE_NAME = 'yt-clone-v13';
     self.addEventListener('install', (e) => { 
         self.skipWaiting(); 
     });
