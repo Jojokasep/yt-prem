@@ -181,7 +181,7 @@ HTML_TEMPLATE = """
     <div class="header-left">
         <a class="yt-logo" href="#" onclick="goHome(event, document.querySelector('.nav-item'))">
             <svg viewBox="0 0 24 24" style="height:22px; color:#FF0000; fill:currentColor;"><path d="M21.58,7.19C21.35,6.33 20.67,5.65 19.81,5.42C18.25,5 12,5 12,5C12,5 5.75,5 4.19,5.42C3.33,5.65 2.65,6.33 2.42,7.19C2,8.75 2,12 2,12C2,12 2,15.25 2.42,16.81C2.65,17.67 3.33,18.35 4.19,18.58C5.75,19 12,19 12,19C12,19 18.25,19 19.81,18.58C20.67,18.35 21.35,17.67 21.58,16.81C22,15.25 22,12 22,12C22,12 22,8.75 21.58,7.19Z"/><path d="M10,15L15.5,12L10,9V15Z" fill="white"/></svg>
-            <span class="yt-logo-text">YouTube</span>
+            <span class="yt-logo-text">Premium</span>
         </a>
     </div>
 
@@ -255,7 +255,7 @@ HTML_TEMPLATE = """
                     <div class="action-pill"><span class="material-icons-outlined">thumb_up</span> Suka</div>
                     <div class="action-pill"><span class="material-icons-outlined">thumb_down</span></div>
                     <div class="action-pill"><span class="material-icons-outlined">reply</span> Bagikan</div>
-                    <div class="action-pill"><span class="material-icons-outlined">download</span> Download</div>
+                    <div class="action-pill" onclick="alert('Mengunduh video dalam kualitas tinggi... (Fitur Premium Aktif)')"><span class="material-icons-outlined">download</span> Download</div>
                 </div>
                 
                 <div class="comments-box">
@@ -280,7 +280,7 @@ HTML_TEMPLATE = """
         <div class="profile-avatar">t</div>
         <div>
             <div class="profile-name">teu apal</div>
-            <div class="profile-handle">@teuapal • Lihat channel</div>
+            <div class="profile-handle">@teuapal • <span style="color: #ff4e45; font-weight: 500;">Anggota Premium</span></div>
             <button class="profile-btn">Buat channel</button>
         </div>
     </div>
@@ -437,7 +437,7 @@ HTML_TEMPLATE = """
         document.getElementById('player-title').textContent = v.title;
         document.getElementById('player-channel-name').textContent = v.channel || 'Channel Name';
         document.getElementById('player-channel-avatar').src = v.avatar || '';
-        document.getElementById('player-box').innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0" allow="autoplay;fullscreen"></iframe>`;
+        document.getElementById('player-box').innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3" allow="autoplay;fullscreen"></iframe>`;
         
         ps.style.display = 'block'; window.scrollTo(0,0);
 
