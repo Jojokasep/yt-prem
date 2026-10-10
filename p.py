@@ -3,6 +3,8 @@ import scrapetube
 import random
 import json
 import logging
+import os
+import time
 from functools import lru_cache
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -17,7 +19,7 @@ HTML_TEMPLATE = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0f0f0f">
     <title>YouTube Premium Clone</title>
-    <link rel="manifest" href="/manifest.json?v=13">
+    <link rel="manifest" href="/manifest.json?v=18">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
@@ -27,7 +29,8 @@ HTML_TEMPLATE = """
         body { background: #0f0f0f; color: #f1f1f1; overflow-x: hidden; }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #717171; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #717171; }
         a { text-decoration: none; color: inherit; }
 
         /* ===== HEADER ===== */
@@ -37,15 +40,17 @@ HTML_TEMPLATE = """
         .yt-logo-text { font-size: 20px; font-weight: 700; letter-spacing: -1px; margin-left: 2px; }
         
         .header-right { display: flex; align-items: center; gap: 12px; }
-        .header-icon { background: transparent; border: none; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 10px; border-radius: 50%; min-width: 44px; min-height: 44px; }
+        .header-icon { background: transparent; border: none; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 10px; border-radius: 50%; min-width: 44px; min-height: 44px; transition: background 0.15s; }
         .header-icon:hover { background: rgba(255,255,255,0.1); }
         .header-icon .material-icons-outlined { font-size: 24px; }
         
         /* Search Form Desktop */
         .search-form-desktop { display: flex; flex: 1; max-width: 600px; align-items: center; margin: 0 40px; }
-        .search-input-wrap-desk { flex: 1; display: flex; align-items: center; border: 1px solid #303030; border-right: none; border-radius: 20px 0 0 20px; background: #121212; height: 40px; padding: 0 16px; }
+        .search-input-wrap-desk { flex: 1; display: flex; align-items: center; border: 1px solid #303030; border-right: none; border-radius: 20px 0 0 20px; background: #121212; height: 40px; padding: 0 16px; transition: border-color 0.2s; }
+        .search-input-wrap-desk:focus-within { border-color: #1c62b9; }
         .search-input-wrap-desk input { width: 100%; background: transparent; border: none; color: #fff; font-size: 16px; outline: none; }
-        .search-btn-desk { height: 40px; width: 64px; border: 1px solid #303030; border-radius: 0 20px 20px 0; background: #222; color: #fff; cursor: pointer; }
+        .search-btn-desk { height: 40px; width: 64px; border: 1px solid #303030; border-radius: 0 20px 20px 0; background: #222; color: #fff; cursor: pointer; transition: background 0.15s; display: flex; align-items: center; justify-content: center; }
+        .search-btn-desk:hover { background: #333; }
         
         /* Search Form Mobile */
         .search-form-mobile { display: none; position: absolute; inset: 0; background: #0f0f0f; padding: 0 12px; align-items: center; gap: 12px; z-index: 110; }
@@ -73,26 +78,27 @@ HTML_TEMPLATE = """
         .nav-item.active .nav-avatar { border-color: #fff; }
 
         /* ===== MAIN CONTENT & GRID ===== */
-        #main { margin-left: 240px; margin-top: 56px; padding: 24px; min-height: 100vh; }
+        #main { margin-left: 240px; margin-top: 56px; padding: 24px; min-height: 100vh; display: block; }
         
         .chips-wrapper { position: sticky; top: 56px; background: #0f0f0f; z-index: 10; padding: 12px 0; margin-bottom: 24px; }
         .chips-bar { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; }
         .chips-bar::-webkit-scrollbar { display: none; }
-        .chip { padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 500; white-space: nowrap; border: none; background: #272727; color: #f1f1f1; cursor: pointer; min-height: 40px; }
+        .chip { padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 500; white-space: nowrap; border: none; background: #272727; color: #f1f1f1; cursor: pointer; min-height: 40px; transition: background 0.15s, color 0.15s; }
+        .chip:hover { background: #383838; }
         .chip.active { background: #f1f1f1; color: #0f0f0f; }
 
         .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 40px 16px; }
         
         .vid-card { cursor: pointer; display: flex; flex-direction: column; gap: 12px; }
-        .thumb-wrap { position: relative; width: 100%; aspect-ratio: 16/9; background: #272727; border-radius: 12px; overflow: hidden; }
-        .thumb-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
-        .vid-card:hover .thumb-img { transform: scale(1.05); }
-        .duration-badge { position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.8); color: #fff; font-size: 12px; font-weight: 500; padding: 3px 6px; border-radius: 4px; }
+        .thumb-wrap { position: relative; width: 100%; aspect-ratio: 16/9; background: #272727; border-radius: 12px; overflow: hidden; will-change: transform; }
+        .thumb-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.25s ease; }
+        .vid-card:hover .thumb-img { transform: scale(1.04); }
+        .duration-badge { position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.85); color: #fff; font-size: 12px; font-weight: 500; padding: 3px 6px; border-radius: 4px; }
         
         .vid-info { display: flex; gap: 12px; align-items: flex-start; }
         .channel-avatar { width: 36px; height: 36px; border-radius: 50%; background: #444; flex-shrink: 0; overflow: hidden; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:bold; }
         .channel-avatar img { width: 100%; height: 100%; object-fit: cover; }
-        .vid-text { flex: 1; }
+        .vid-text { flex: 1; min-width: 0; }
         .vid-title { font-size: 16px; font-weight: 500; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 4px; }
         .vid-meta { font-size: 14px; color: #aaa; }
 
@@ -100,21 +106,24 @@ HTML_TEMPLATE = """
         #player-section { display: none; margin-left: 240px; margin-top: 56px; padding: 24px; max-width: 1500px; }
         .player-layout { display: grid; grid-template-columns: 1fr 400px; gap: 24px; }
         
-        .player-main-col { width: 100%; }
+        .player-main-col { width: 100%; min-width: 0; }
         .player-container { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden; }
         .player-container iframe { width: 100%; height: 100%; border: none; display: block; }
         
         .player-meta { padding: 16px 0; }
-        .player-title { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
+        .player-title { font-size: 20px; font-weight: 700; margin-bottom: 12px; line-height: 1.35; }
         
         .channel-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; }
         .channel-info { display: flex; align-items: center; gap: 12px; }
         .channel-name { font-weight: 600; font-size: 16px; }
-        .btn-subscribe { background: #f1f1f1; color: #0f0f0f; font-weight: 600; border: none; padding: 10px 20px; border-radius: 20px; font-size: 14px; cursor: pointer; min-height: 40px; }
+        .btn-subscribe { background: #f1f1f1; color: #0f0f0f; font-weight: 600; border: none; padding: 10px 20px; border-radius: 20px; font-size: 14px; cursor: pointer; min-height: 40px; transition: background 0.15s; }
+        .btn-subscribe:hover { background: #d9d9d9; }
+        .btn-subscribe.subscribed { background: #272727; color: #f1f1f1; border: 1px solid rgba(255,255,255,0.1); }
         
         .action-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
-        .action-pill { display: flex; align-items: center; gap: 6px; background: #272727; padding: 10px 18px; border-radius: 20px; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; min-height: 40px; }
+        .action-pill { display: flex; align-items: center; gap: 6px; background: #272727; padding: 10px 18px; border-radius: 20px; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; min-height: 40px; transition: background 0.15s; border: none; color: #fff; }
         .action-pill:hover { background: #3f3f3f; }
+        .action-pill.active { color: #3ea6ff; }
         
         .comments-box { background: #272727; border-radius: 12px; padding: 16px; margin-top: 16px; }
 
@@ -124,7 +133,7 @@ HTML_TEMPLATE = """
         .related-card { display: flex; gap: 8px; cursor: pointer; }
         .related-thumb { width: 168px; aspect-ratio: 16/9; background: #272727; border-radius: 8px; overflow: hidden; flex-shrink: 0; position: relative; }
         .related-thumb img { width: 100%; height: 100%; object-fit: cover; }
-        .related-info { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+        .related-info { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
         .related-vid-title { font-size: 14px; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3; }
         .related-vid-channel, .related-vid-meta { font-size: 12px; color: #aaa; }
 
@@ -136,7 +145,8 @@ HTML_TEMPLATE = """
         .profile-avatar-wrap:hover::after { content: 'Ubah'; position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; }
         .profile-name { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
         .profile-handle { font-size: 14px; color: #aaa; margin-bottom: 12px; }
-        .profile-btn { background: #272727; border: none; color: #fff; padding: 8px 16px; border-radius: 16px; font-size: 13px; font-weight: 500; cursor: pointer; min-height: 36px; }
+        .profile-btn { background: #272727; border: none; color: #fff; padding: 8px 16px; border-radius: 16px; font-size: 13px; font-weight: 500; cursor: pointer; min-height: 36px; transition: background 0.15s; }
+        .profile-btn:hover { background: #383838; }
         
         .horizontal-list { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 16px; scrollbar-width: none; }
         .horizontal-list::-webkit-scrollbar { display: none; }
@@ -146,12 +156,12 @@ HTML_TEMPLATE = """
         .hist-channel { font-size: 13px; color: #aaa; }
         
         /* Scroll to Top Button */
-        #scrollTopBtn { display: none; position: fixed; bottom: 70px; right: 20px; background: #272727; color: #fff; border: none; width: 44px; height: 44px; border-radius: 50%; align-items: center; justify-content: center; cursor: pointer; z-index: 99; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        #scrollTopBtn { display: none; position: fixed; bottom: 70px; right: 20px; background: #272727; color: #fff; border: 1px solid rgba(255,255,255,0.1); width: 44px; height: 44px; border-radius: 50%; align-items: center; justify-content: center; cursor: pointer; z-index: 99; box-shadow: 0 4px 10px rgba(0,0,0,0.5); transition: background 0.15s; }
         #scrollTopBtn:hover { background: #3f3f3f; }
 
-        /* Loaders */
-        .loader-container { display: none; justify-content: center; padding: 20px 0; width: 100%; }
-        .spinner { width: 32px; height: 32px; border: 3px solid #333; border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
+        /* Loaders & End-of-content */
+        .loader-container { display: flex; justify-content: center; align-items: center; padding: 30px 0; width: 100%; min-height: 60px; }
+        .spinner { width: 32px; height: 32px; border: 3px solid #333; border-top-color: #ff0000; border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
         
         .skeleton-card { display: flex; gap: 8px; margin-bottom: 12px; }
@@ -171,7 +181,7 @@ HTML_TEMPLATE = """
             #sidebar { display: none; }
             #bottom-nav { display: flex; }
             
-            #main { margin-left: 0; padding: 0; padding-bottom: 60px; }
+            #main { margin-left: 0; padding: 0; padding-bottom: 70px; }
             .chips-wrapper { padding: 12px 16px; margin-bottom: 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
             
             .search-form-desktop { display: none; }
@@ -184,14 +194,13 @@ HTML_TEMPLATE = """
             .vid-title { font-size: 15px; }
             .vid-meta { font-size: 13px; }
             
-            #player-section { margin-left: 0; margin-top: 0; padding: 0; padding-bottom: 60px; max-width: 100%; width: 100%; overflow: hidden; }
-            /* DIPERBAIKI: Mengunci lebar player container agar tidak melebihi layar HP */
+            #player-section { margin-left: 0; margin-top: 0; padding: 0; padding-bottom: 70px; max-width: 100%; width: 100%; overflow: hidden; }
             .player-container { width: 100%; max-width: 100vw; border-radius: 0; position: sticky; top: 56px; z-index: 95; }
             .player-meta { padding: 12px 16px; }
             .player-title { font-size: 18px; }
             .related-col { padding: 0 16px; }
 
-            #profile-section { margin-left: 0; padding: 0; padding-bottom: 60px; }
+            #profile-section { margin-left: 0; padding: 0; padding-bottom: 70px; }
             .profile-header { padding: 24px 16px; margin-bottom: 0; }
             .horizontal-list { padding: 0 16px 16px; }
             #scrollTopBtn { bottom: 65px; right: 15px; }
@@ -211,7 +220,7 @@ HTML_TEMPLATE = """
     <form class="search-form-desktop" onsubmit="searchVideos(event, 'desktop')">
         <div class="search-input-wrap-desk"><input type="text" id="keyword-desktop" placeholder="Telusuri" autocomplete="off"></div>
         <button type="submit" class="search-btn-desk"><span class="material-icons-outlined">search</span></button>
-        <button type="button" class="header-icon" style="background:#181818; margin-left:12px;"><span class="material-icons-outlined">mic</span></button>
+        <button type="button" class="header-icon" style="background:#181818; margin-left:12px;" onclick="triggerVoiceSearch()"><span class="material-icons-outlined">mic</span></button>
     </form>
 
     <div class="header-right">
@@ -226,7 +235,7 @@ HTML_TEMPLATE = """
             <input type="text" id="keyword-mobile" placeholder="Telusuri YouTube" autocomplete="off">
         </div>
         <button type="submit" class="header-icon"><span class="material-icons-outlined">search</span></button>
-        <button type="button" class="header-icon" style="background:#222; border-radius:50%; width:36px; height:36px;"><span class="material-icons-outlined" style="font-size:20px;">mic</span></button>
+        <button type="button" class="header-icon" style="background:#222; border-radius:50%; width:36px; height:36px;" onclick="triggerVoiceSearch()"><span class="material-icons-outlined" style="font-size:20px;">mic</span></button>
     </form>
 </header>
 
@@ -264,19 +273,19 @@ HTML_TEMPLATE = """
                             <div style="font-size: 12px; color: #aaa;">1,2 jt subscriber</div>
                         </div>
                     </div>
-                    <button class="btn-subscribe">Subscribe</button>
+                    <button class="btn-subscribe" id="btn-subscribe-player" onclick="toggleSubscribe(this)">Subscribe</button>
                 </div>
                 <div class="action-row">
-                    <div class="action-pill"><span class="material-icons-outlined">thumb_up</span> Suka</div>
-                    <div class="action-pill"><span class="material-icons-outlined">thumb_down</span></div>
-                    <div class="action-pill"><span class="material-icons-outlined">reply</span> Bagikan</div>
-                    <div class="action-pill" onclick="alert('Mengunduh video dalam kualitas tinggi... (Fitur Premium Aktif)')"><span class="material-icons-outlined">download</span> Download</div>
+                    <button class="action-pill" id="btn-like-player" onclick="toggleLike(this)"><span class="material-icons-outlined">thumb_up</span> Suka</button>
+                    <button class="action-pill" id="btn-dislike-player" onclick="toggleDislike(this)"><span class="material-icons-outlined">thumb_down</span></button>
+                    <button class="action-pill" onclick="shareCurrentVideo()"><span class="material-icons-outlined">reply</span> Bagikan</button>
+                    <button class="action-pill" onclick="alert('Mengunduh video dalam kualitas tinggi... (Fitur Premium Aktif)')"><span class="material-icons-outlined">download</span> Download</button>
                 </div>
                 <div class="comments-box">
                     <div style="font-weight:700; margin-bottom:8px; font-size:14px;">Komentar <span style="font-weight:400; color:#aaa;">245</span></div>
-                    <div style="display:flex; gap:10px; font-size:13px;">
-                        <div style="width:24px; height:24px; border-radius:50%; background:#555;"></div>
-                        <div style="flex:1;">Tulis komentar...</div>
+                    <div style="display:flex; gap:10px; font-size:13px; align-items:center;">
+                        <div class="channel-avatar global-avatar-disp" style="width:28px; height:28px;">t</div>
+                        <input type="text" placeholder="Tulis komentar..." style="flex:1; background:transparent; border:none; border-bottom:1px solid #444; color:#fff; padding:4px 0; outline:none;" onkeydown="if(event.key==='Enter'){alert('Komentar berhasil ditambahkan!'); this.value='';}">
                     </div>
                 </div>
             </div>
@@ -306,7 +315,7 @@ HTML_TEMPLATE = """
     <div class="horizontal-list" id="history-scroll"></div>
 </div>
 
-<button id="scrollTopBtn" onclick="scrollToTop()"><span class="material-icons-outlined">arrow_upward</span></button>
+<button id="scrollTopBtn" onclick="scrollToTop()" title="Ke atas"><span class="material-icons-outlined">arrow_upward</span></button>
 
 <nav id="bottom-nav">
     <div class="nav-item active" onclick="goHome(event, this)"><span class="material-icons-outlined">home</span><span class="nav-label">Beranda</span></div>
@@ -316,9 +325,9 @@ HTML_TEMPLATE = """
 <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js?v=13').then(reg => {
+            navigator.serviceWorker.register('/sw.js?v=18').then(reg => {
                 reg.update();
-            });
+            }).catch(() => {});
         });
     }
 
@@ -334,10 +343,7 @@ HTML_TEMPLATE = """
     installBtn.addEventListener('click', async () => {
         if (deferredPrompt !== null) {
             deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            if (outcome === 'accepted') {
-                console.log('User menginstal aplikasi');
-            }
+            await deferredPrompt.userChoice;
             deferredPrompt = null;
             installBtn.style.display = 'none';
         }
@@ -347,17 +353,26 @@ HTML_TEMPLATE = """
         installBtn.style.display = 'none';
     });
 
+    // App state
     let currentQuery = '';
+    let currentCategory = '';
     let currentOffset = 0;
     let isLoadingMore = false;
+    let hasMoreHome = true;
     
     let currentRelatedKeyword = '';
     let currentRelatedOffset = 0;
     let isRelatedLoading = false;
+    let hasMoreRelated = true;
+    
+    let currentPlayingVideo = null;
+    const loadedGridIds = new Set();
+    const loadedRelatedIds = new Set();
     
     window.addEventListener('DOMContentLoaded', () => { 
         loadCustomAvatar();
         history.replaceState({view: 'home'}, '', '');
+        initInfiniteScrollObservers();
         loadHome(); 
     });
 
@@ -372,26 +387,64 @@ HTML_TEMPLATE = """
             goHome(null, document.querySelector('.nav-item'), false);
         }
     });
-    
-    window.addEventListener('scroll', () => {
-        const scrollTopBtn = document.getElementById('scrollTopBtn');
-        if (window.scrollY > 400) {
-            scrollTopBtn.style.display = 'flex';
-        } else {
-            scrollTopBtn.style.display = 'none';
+
+    // Setup intersection observer for true seamless infinite scroll
+    function initInfiniteScrollObservers() {
+        const mainLoader = document.getElementById('main-scroll-loader');
+        if (mainLoader && 'IntersectionObserver' in window) {
+            const mainObserver = new IntersectionObserver((entries) => {
+                if (entries[0].isIntersecting && !isLoadingMore && hasMoreHome && isMainVisible()) {
+                    loadMoreData();
+                }
+            }, { rootMargin: '300px' });
+            mainObserver.observe(mainLoader);
         }
 
-        if (!isLoadingMore && document.getElementById('main').style.display === 'block') {
-            if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 300) {
-                loadMoreData();
-            }
+        const relatedLoader = document.getElementById('related-scroll-loader');
+        if (relatedLoader && 'IntersectionObserver' in window) {
+            const relatedObserver = new IntersectionObserver((entries) => {
+                if (entries[0].isIntersecting && !isRelatedLoading && hasMoreRelated && isPlayerVisible()) {
+                    loadMoreRelated();
+                }
+            }, { rootMargin: '300px' });
+            relatedObserver.observe(relatedLoader);
         }
-        else if (!isRelatedLoading && document.getElementById('player-section').style.display === 'block') {
-            if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 300) {
-                loadMoreRelated();
-            }
+    }
+
+    function isMainVisible() {
+        const m = document.getElementById('main');
+        return m && m.style.display !== 'none';
+    }
+
+    function isPlayerVisible() {
+        const p = document.getElementById('player-section');
+        return p && p.style.display === 'block';
+    }
+    
+    // Throttled scroll listener backup & scroll-to-top button
+    let scrollTicking = false;
+    window.addEventListener('scroll', () => {
+        if (!scrollTicking) {
+            window.requestAnimationFrame(() => {
+                const scrollTopBtn = document.getElementById('scrollTopBtn');
+                scrollTopBtn.style.display = window.scrollY > 400 ? 'flex' : 'none';
+
+                if (!isLoadingMore && hasMoreHome && isMainVisible()) {
+                    const scrollBottom = window.innerHeight + window.pageYOffset;
+                    if (scrollBottom >= document.documentElement.scrollHeight - 350) {
+                        loadMoreData();
+                    }
+                } else if (!isRelatedLoading && hasMoreRelated && isPlayerVisible()) {
+                    const scrollBottom = window.innerHeight + window.pageYOffset;
+                    if (scrollBottom >= document.documentElement.scrollHeight - 350) {
+                        loadMoreRelated();
+                    }
+                }
+                scrollTicking = false;
+            });
+            scrollTicking = true;
         }
-    });
+    }, { passive: true });
 
     function scrollToTop() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -418,41 +471,95 @@ HTML_TEMPLATE = """
     }
 
     function applyCustomAvatar(imgSrc) {
-        const avatarElements = document.querySelectorAll('.global-avatar-disp');
-        avatarElements.forEach(el => {
+        document.querySelectorAll('.global-avatar-disp').forEach(el => {
             el.innerHTML = `<img src="${imgSrc}" alt="Avatar" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
         });
-        
         const profileInner = document.getElementById('profile-avatar-inner');
         if (profileInner) {
             profileInner.innerHTML = `<img src="${imgSrc}" alt="Avatar" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
         }
     }
 
-    async function loadHome() {
+    async function loadHome(category = '') {
         isLoadingMore = false;
-        showSkeletons();
-        currentQuery = ''; currentOffset = 0;
+        hasMoreHome = true;
+        currentQuery = '';
+        currentCategory = category;
+        currentOffset = 0;
+        loadedGridIds.clear();
+
         document.getElementById('keyword-desktop').value = '';
         document.getElementById('keyword-mobile').value = '';
-        try { const res = await fetch('/api/home'); const data = await res.json(); renderGrid(data); } catch(e){}
+        document.getElementById('main').style.display = 'block';
+        document.getElementById('main-scroll-loader').style.display = 'flex';
+        showSkeletons();
+
+        try {
+            let url = category ? `/api/home?category=${encodeURIComponent(category)}&offset=0` : '/api/home?offset=0';
+            const res = await fetch(url);
+            const data = await res.json();
+            currentOffset = data.length;
+            renderGrid(data);
+        } catch(e) {
+            console.error(e);
+        }
     }
 
     async function loadMoreData() {
-        if (isLoadingMore) return;
+        if (isLoadingMore || !hasMoreHome) return;
         isLoadingMore = true; 
         document.getElementById('main-scroll-loader').style.display = 'flex';
         try {
-            let fetchUrl = currentQuery ? `/api/search?q=${encodeURIComponent(currentQuery)}&offset=${currentOffset}` : '/api/home';
-            const res = await fetch(fetchUrl); const data = await res.json();
-            if (data.length > 0) { currentOffset += data.length; appendToGrid(data); }
-        } catch(e){} finally { isLoadingMore = false; document.getElementById('main-scroll-loader').style.display = 'none'; }
+            let fetchUrl = currentQuery 
+                ? `/api/search?q=${encodeURIComponent(currentQuery)}&offset=${currentOffset}` 
+                : `/api/home?category=${encodeURIComponent(currentCategory)}&offset=${currentOffset}`;
+            const res = await fetch(fetchUrl);
+            const data = await res.json();
+            if (data && data.length > 0) { 
+                currentOffset += data.length; 
+                appendToGrid(data); 
+            } else {
+                hasMoreHome = false;
+                document.getElementById('main-scroll-loader').style.display = 'none';
+            }
+        } catch(e) {
+            console.error(e);
+        } finally { 
+            isLoadingMore = false; 
+        }
     }
 
     function toggleMobileSearch(show) {
         const form = document.getElementById('mobile-search-form');
         const input = document.getElementById('keyword-mobile');
-        if (show) { form.classList.add('active'); input.focus(); } else { form.classList.remove('active'); }
+        if (show) { 
+            form.classList.add('active'); 
+            input.focus(); 
+        } else { 
+            form.classList.remove('active'); 
+        }
+    }
+
+    function triggerVoiceSearch() {
+        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRec) {
+            const rec = new SpeechRec();
+            rec.lang = 'id-ID';
+            rec.onresult = (e) => {
+                const text = e.results[0][0].transcript;
+                document.getElementById('keyword-desktop').value = text;
+                document.getElementById('keyword-mobile').value = text;
+                executeSearch(text);
+            };
+            rec.start();
+        } else {
+            const q = prompt('Telusuri video:');
+            if (q) {
+                document.getElementById('keyword-desktop').value = q;
+                document.getElementById('keyword-mobile').value = q;
+                executeSearch(q);
+            }
+        }
     }
 
     function searchVideos(e, source) {
@@ -461,35 +568,41 @@ HTML_TEMPLATE = """
         const q = inputEl.value.trim();
         document.getElementById('keyword-desktop').value = q; 
         document.getElementById('keyword-mobile').value = q;
-        
-        if (q) { 
-            activateNav(document.querySelector('.nav-item')); 
-            currentQuery = q; 
-            currentOffset = 0; 
-            isLoadingMore = false;
-            
-            showSkeletons();
-            fetch('/api/search?q=' + encodeURIComponent(q))
-                .then(r => r.json())
-                .then(d => { 
-                    currentOffset = d.length; 
-                    renderGrid(d); 
-                });
-        }
+        if (q) executeSearch(q);
     }
 
-    function chipClick(btn, query) {
-        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active')); btn.classList.add('active');
-        document.getElementById('keyword-desktop').value = query; document.getElementById('keyword-mobile').value = query;
+    function executeSearch(q) {
+        activateNav(document.querySelector('.nav-item')); 
+        currentQuery = q; 
+        currentCategory = '';
+        currentOffset = 0; 
         isLoadingMore = false;
-        if (query) { currentQuery = query; currentOffset = 0; showSkeletons(); fetch('/api/search?q=' + encodeURIComponent(query)).then(r=>r.json()).then(d => { currentOffset=d.length; renderGrid(d); }); } 
-        else loadHome();
+        hasMoreHome = true;
+        loadedGridIds.clear();
+        
+        document.getElementById('main-scroll-loader').style.display = 'flex';
+        showSkeletons();
+        fetch('/api/search?q=' + encodeURIComponent(q) + '&offset=0')
+            .then(r => r.json())
+            .then(d => { 
+                currentOffset = d.length; 
+                renderGrid(d); 
+            });
+    }
+
+    function chipClick(btn, category) {
+        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        document.getElementById('keyword-desktop').value = '';
+        document.getElementById('keyword-mobile').value = '';
+        loadHome(category);
     }
 
     function activateNav(el) {
         if(!el) return;
         isLoadingMore = false;
-        document.querySelectorAll('.nav-item, .sidebar-item').forEach(n => n.classList.remove('active')); el.classList.add('active');
+        document.querySelectorAll('.nav-item, .sidebar-item').forEach(n => n.classList.remove('active'));
+        el.classList.add('active');
         document.getElementById('main').style.display = 'block';
         document.getElementById('player-section').style.display = 'none';
         document.getElementById('profile-section').style.display = 'none';
@@ -498,7 +611,6 @@ HTML_TEMPLATE = """
 
     function goHome(e, el, push = true) { 
         if (e) e.preventDefault(); 
-        isLoadingMore = false;
         activateNav(el || document.querySelector('.nav-item')); 
         document.getElementById('chips-container').style.display = 'block'; 
         if (push) {
@@ -517,18 +629,33 @@ HTML_TEMPLATE = """
         }
         const hist = JSON.parse(localStorage.getItem('yt_history') || '[]');
         const container = document.getElementById('history-scroll');
-        if(hist.length === 0) { container.innerHTML = '<div style="color:#aaa; font-size:13px; padding-left:16px;">Belum ada histori tontonan.</div>'; return; }
-        container.innerHTML = hist.slice(0,10).map(v => `<div class="hist-card" onclick="playVideo('${encodeURIComponent(JSON.stringify(v))}')"><img src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" class="hist-thumb"><div class="hist-title">${v.title}</div><div class="hist-channel">${v.channel}</div></div>`).join('');
+        if(hist.length === 0) { 
+            container.innerHTML = '<div style="color:#aaa; font-size:13px; padding-left:16px;">Belum ada histori tontonan.</div>'; 
+            return; 
+        }
+        container.innerHTML = hist.slice(0, 15).map(v => `
+            <div class="hist-card" onclick="playVideo('${encodeURIComponent(JSON.stringify(v))}')">
+                <img src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" class="hist-thumb" loading="lazy">
+                <div class="hist-title">${v.title}</div>
+                <div class="hist-channel">${v.channel || ''}</div>
+            </div>
+        `).join('');
     }
 
     function playVideo(videoStr, push = true) {
         let v; try { v = JSON.parse(decodeURIComponent(videoStr)); } catch(e){ return; }
         
+        currentPlayingVideo = v;
         isLoadingMore = false;
         isRelatedLoading = false;
+        hasMoreRelated = true;
+        loadedRelatedIds.clear();
 
-        let hist = JSON.parse(localStorage.getItem('yt_history') || '[]'); hist = hist.filter(x => x.id !== v.id); hist.unshift(v);
-        if(hist.length > 50) hist.pop(); localStorage.setItem('yt_history', JSON.stringify(hist));
+        let hist = JSON.parse(localStorage.getItem('yt_history') || '[]');
+        hist = hist.filter(x => x.id !== v.id);
+        hist.unshift(v);
+        if(hist.length > 50) hist.pop();
+        localStorage.setItem('yt_history', JSON.stringify(hist));
 
         toggleMobileSearch(false);
 
@@ -537,29 +664,64 @@ HTML_TEMPLATE = """
         
         document.getElementById('player-title').textContent = v.title;
         document.getElementById('player-channel-name').textContent = v.channel || 'Channel Name';
-        document.getElementById('player-channel-avatar').src = v.avatar || '';
+        document.getElementById('player-channel-avatar').src = v.avatar || 'https://via.placeholder.com/40';
         
+        const subBtn = document.getElementById('btn-subscribe-player');
+        if (subBtn) {
+            subBtn.className = 'btn-subscribe';
+            subBtn.textContent = 'Subscribe';
+        }
+        const likeBtn = document.getElementById('btn-like-player');
+        if (likeBtn) likeBtn.classList.remove('active');
+
         document.getElementById('player-box').innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
         
-        document.getElementById('player-section').style.display = 'block'; window.scrollTo(0,0);
+        document.getElementById('player-section').style.display = 'block';
+        window.scrollTo(0, 0);
 
         if (push) {
             history.pushState({view: 'player', video: videoStr}, '', '#watch?v=' + v.id);
         }
 
-        currentRelatedKeyword = v.title.split(' ').slice(0, 3).join(' ');
+        currentRelatedKeyword = v.channel || v.title.split(' ').slice(0, 3).join(' ');
         currentRelatedOffset = 0;
         document.getElementById('related-videos-container').innerHTML = '';
         loadMoreRelated(true);
     }
 
+    function toggleSubscribe(btn) {
+        btn.classList.toggle('subscribed');
+        btn.textContent = btn.classList.contains('subscribed') ? 'Disubscribe' : 'Subscribe';
+    }
+
+    function toggleLike(btn) {
+        btn.classList.toggle('active');
+        document.getElementById('btn-dislike-player').classList.remove('active');
+    }
+
+    function toggleDislike(btn) {
+        btn.classList.toggle('active');
+        document.getElementById('btn-like-player').classList.remove('active');
+    }
+
+    function shareCurrentVideo() {
+        if (!currentPlayingVideo) return;
+        const url = `https://youtu.be/${currentPlayingVideo.id}`;
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(url).then(() => alert('Tautan video berhasil disalin!')).catch(() => alert('Tautan: ' + url));
+        } else {
+            alert('Tautan: ' + url);
+        }
+    }
+
     async function loadMoreRelated(isFirstLoad = false) {
-        if(isRelatedLoading) return;
+        if(isRelatedLoading || (!isFirstLoad && !hasMoreRelated)) return;
         isRelatedLoading = true;
         const container = document.getElementById('related-videos-container');
         
         if (isFirstLoad) {
             container.innerHTML = Array(4).fill(`<div class="skeleton-card"><div class="skeleton-thumb"></div><div class="skeleton-info"><div class="skeleton-line" style="width: 90%;"></div><div class="skeleton-line" style="width: 60%;"></div></div></div>`).join('');
+            document.getElementById('related-scroll-loader').style.display = 'flex';
         } else {
             document.getElementById('related-scroll-loader').style.display = 'flex';
         }
@@ -570,35 +732,51 @@ HTML_TEMPLATE = """
             
             if (isFirstLoad) container.innerHTML = ''; 
             
-            if (data.length > 0) {
+            if (data && data.length > 0) {
                 currentRelatedOffset += data.length;
-                const html = data.map(item => {
+                const newItems = data.filter(item => item.id && !loadedRelatedIds.has(item.id));
+                newItems.forEach(item => loadedRelatedIds.add(item.id));
+
+                const html = newItems.map(item => {
                     const itemStr = encodeURIComponent(JSON.stringify(item));
                     let meta = [item.channel, item.views].filter(Boolean).join(' • ');
                     return `<div class="related-card" onclick="playVideo('${itemStr}')"><div class="related-thumb"><img src="https://i.ytimg.com/vi/${item.id}/mqdefault.jpg" loading="lazy">${item.duration ? '<span class="duration-badge">' + item.duration + '</span>' : ''}</div><div class="related-info"><div class="related-vid-title">${item.title}</div><div class="related-vid-channel">${item.channel || ''}</div><div class="related-vid-meta">${meta}</div></div></div>`;
                 }).join('');
                 container.insertAdjacentHTML('beforeend', html);
-            } else if (isFirstLoad) {
-                container.innerHTML = '<div style="color:#aaa; font-size:13px;">Tidak ada video serupa.</div>';
+            } else {
+                hasMoreRelated = false;
+                document.getElementById('related-scroll-loader').style.display = 'none';
+                if (isFirstLoad) {
+                    container.innerHTML = '<div style="color:#aaa; font-size:13px;">Tidak ada video serupa.</div>';
+                }
             }
         } catch(e) {
             if(isFirstLoad) container.innerHTML = '<div style="color:#aaa; font-size:13px;">Gagal memuat video serupa.</div>';
         } finally {
             isRelatedLoading = false;
-            document.getElementById('related-scroll-loader').style.display = 'none';
         }
     }
 
-    function showSkeletons() { document.getElementById('video-grid').innerHTML = Array(8).fill(`<div class="vid-card"><div class="thumb-wrap" style="background:#272727; animation: pulse 1.5s infinite;"></div><div class="vid-info"><div class="channel-avatar" style="animation: pulse 1.5s infinite;"></div><div class="vid-text"><div style="height:14px; background:#272727; margin-bottom:8px; width:90%; border-radius:4px; animation: pulse 1.5s infinite;"></div><div style="height:12px; background:#272727; width:60%; border-radius:4px; animation: pulse 1.5s infinite;"></div></div></div></div>`).join(''); }
+    function showSkeletons() { 
+        document.getElementById('video-grid').innerHTML = Array(6).fill(`<div class="vid-card"><div class="thumb-wrap" style="background:#272727; animation: pulse 1.5s infinite;"></div><div class="vid-info"><div class="channel-avatar" style="animation: pulse 1.5s infinite;"></div><div class="vid-text"><div style="height:14px; background:#272727; margin-bottom:8px; width:90%; border-radius:4px; animation: pulse 1.5s infinite;"></div><div style="height:12px; background:#272727; width:60%; border-radius:4px; animation: pulse 1.5s infinite;"></div></div></div></div>`).join(''); 
+    }
 
-    function renderGrid(data) { const g = document.getElementById('video-grid'); g.innerHTML = ''; appendToGrid(data); }
+    function renderGrid(data) { 
+        const g = document.getElementById('video-grid'); 
+        g.innerHTML = ''; 
+        loadedGridIds.clear();
+        appendToGrid(data); 
+    }
 
     function appendToGrid(data) {
         const g = document.getElementById('video-grid');
         data.forEach(v => {
-            const card = document.createElement('div'); card.className = 'vid-card';
+            if (!v.id || loadedGridIds.has(v.id)) return;
+            loadedGridIds.add(v.id);
+            const card = document.createElement('div'); 
+            card.className = 'vid-card';
             card.onclick = () => playVideo(encodeURIComponent(JSON.stringify(v)));
-            let avatarHtml = v.avatar ? `<div class="channel-avatar"><img src="${v.avatar}"></div>` : `<div class="channel-avatar">${v.channel ? v.channel.charAt(0).toUpperCase() : '?'}</div>`;
+            let avatarHtml = v.avatar ? `<div class="channel-avatar"><img src="${v.avatar}" loading="lazy"></div>` : `<div class="channel-avatar">${v.channel ? v.channel.charAt(0).toUpperCase() : '?'}</div>`;
             card.innerHTML = `<div class="thumb-wrap"><img class="thumb-img" src="https://i.ytimg.com/vi/${v.id}/hqdefault.jpg" loading="lazy">${v.duration ? '<span class="duration-badge">' + v.duration + '</span>' : ''}</div><div class="vid-info">${avatarHtml}<div class="vid-text"><div class="vid-title">${v.title}</div><div class="vid-meta">${[v.channel, v.views, v.published].filter(Boolean).join(' • ')}</div></div></div>`;
             g.appendChild(card);
         });
@@ -613,6 +791,8 @@ def extract_video_data(video):
     try: 
         runs = video.get("title", {}).get("runs")
         if runs: data["title"] = runs[0].get("text", "No Title")
+        elif video.get("title", {}).get("simpleText"):
+            data["title"] = video["title"]["simpleText"]
     except Exception: pass
     try: data["duration"] = video.get("lengthText", {}).get("simpleText", "")
     except Exception: pass
@@ -666,7 +846,7 @@ def manifest():
 @app.route("/sw.js")
 def service_worker():
     js = """
-    const CACHE_NAME = 'yt-clone-v13';
+    const CACHE_NAME = 'yt-clone-v18';
     self.addEventListener('install', (e) => { 
         self.skipWaiting(); 
     });
@@ -697,27 +877,96 @@ def service_worker():
     """
     return app.response_class(js, mimetype='application/javascript')
 
-@lru_cache(maxsize=32)
-def cached_scrapetube_search(keyword, limit):
-    results = []
-    videos = scrapetube.get_search(keyword, limit=limit)
-    for v in videos:
-        d = extract_video_data(v)
-        if d.get("id"): 
-            results.append(d)
-    return results
+# ==============================================================================
+# SISTEM CACHING TINGKAT LANJUT (PERSISTEN DISK & MEMORI RAM)
+# Mencegah scraping berulang dari awal. Video disimpan dan di-cache secara otomatis.
+# ==============================================================================
+
+CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "yt_cache.json")
+CACHE_TTL = 86400  # Masa aktif cache: 24 jam dalam detik
+
+GLOBAL_CACHE = {}
+
+def load_cache():
+    global GLOBAL_CACHE
+    if os.path.exists(CACHE_FILE):
+        try:
+            with open(CACHE_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    GLOBAL_CACHE = data
+                    logging.info(f"Loaded cache from disk: {len(GLOBAL_CACHE)} keyword tersimpan.")
+        except Exception as e:
+            logging.warning(f"Gagal membaca file cache: {e}")
+
+def save_cache():
+    try:
+        with open(CACHE_FILE, "w", encoding="utf-8") as f:
+            json.dump(GLOBAL_CACHE, f, ensure_ascii=False)
+    except Exception as e:
+        logging.warning(f"Gagal menyimpan cache ke disk: {e}")
+
+def get_videos_with_cache(keyword, offset=0, limit=15):
+    """
+    Mengambil video dari cache memori/disk tanpa scraping ulang dari awal.
+    Jika video di cache belum mencapai (offset + limit), hanya scrape tambahannya.
+    """
+    global GLOBAL_CACHE
+    keyword = keyword.strip().lower()
+    if not keyword:
+        return []
+
+    now = time.time()
+    entry = GLOBAL_CACHE.get(keyword)
+    cached_videos = entry.get("videos", []) if entry else []
+
+    # Cek apakah cache mencukupi dan belum kadaluarsa
+    if entry and len(cached_videos) >= (offset + limit) and (now - entry.get("timestamp", 0) < CACHE_TTL):
+        return cached_videos[offset : offset + limit]
+
+    # Jika cache belum mencapai jumlah yang dibutuhkan, scrape kelanjutannya
+    needed = max(50, offset + limit + 25)
+    try:
+        logging.info(f"Cache butuh data tambahan untuk '{keyword}' (total {needed} video)...")
+        seen_ids = set()
+        combined_videos = []
+
+        # Pertahankan data lama yang sudah ada di cache
+        for v in cached_videos:
+            if v.get("id") and v["id"] not in seen_ids:
+                seen_ids.add(v["id"])
+                combined_videos.append(v)
+
+        # Scrape untuk melengkapi batas yang dibutuhkan
+        for v in scrapetube.get_search(keyword, limit=needed):
+            d = extract_video_data(v)
+            if d.get("id") and d["id"] not in seen_ids:
+                seen_ids.add(d["id"])
+                combined_videos.append(d)
+
+        GLOBAL_CACHE[keyword] = {
+            "timestamp": now,
+            "videos": combined_videos
+        }
+        save_cache()
+        return combined_videos[offset : offset + limit]
+    except Exception as e:
+        logging.error(f"Gagal scraping data untuk '{keyword}': {e}")
+        # Jika koneksi gagal, kembalikan apa yang sudah ada di cache
+        if cached_videos:
+            return cached_videos[offset : offset + limit]
+        return []
+
+# Muat cache saat startup
+load_cache()
 
 @app.route("/api/home")
 def api_home():
-    results = []
-    try:
-        base_keywords = ["Viral", "Hits Indonesia", "Trending Video", "Podcast Terbaru", "Gaming"]
-        random_keyword = random.choice(base_keywords)
-        results = cached_scrapetube_search(random_keyword, 15)
-        results = list(results)
-        random.shuffle(results)
-    except Exception as e:
-        logging.error(f"Gagal memuat API Home: {e}")
+    category = request.args.get("category", "").strip()
+    offset = int(request.args.get("offset", 0))
+    limit = 15
+    search_key = f"{category} Indonesia" if category else "Trending Indonesia"
+    results = get_videos_with_cache(search_key, offset=offset, limit=limit)
     return jsonify(results)
 
 @app.route("/api/search")
@@ -725,14 +974,9 @@ def api_search():
     query = request.args.get("q", "").strip()
     offset = int(request.args.get("offset", 0))
     limit = 15
-    results = []
     if not query: 
-        return jsonify(results)
-    try:
-        all_videos = cached_scrapetube_search(query, offset + limit)
-        results = all_videos[offset:offset + limit]
-    except Exception as e:
-        logging.error(f"Gagal memuat API Search untuk keyword '{query}': {e}")
+        return jsonify([])
+    results = get_videos_with_cache(query, offset=offset, limit=limit)
     return jsonify(results)
 
 if __name__ == "__main__":
