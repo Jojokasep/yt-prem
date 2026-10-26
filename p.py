@@ -19,7 +19,7 @@ HTML_TEMPLATE = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0f0f0f">
     <title>YouTube Premium Clone</title>
-    <link rel="manifest" href="/manifest.json?v=19">
+    <link rel="manifest" href="/manifest.json?v=20">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
@@ -479,7 +479,7 @@ HTML_TEMPLATE = """
 <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js?v=19').then(reg => {
+            navigator.serviceWorker.register('/sw.js?v=20').then(reg => {
                 reg.update();
             }).catch(() => {});
         });
@@ -1051,8 +1051,10 @@ HTML_TEMPLATE = """
     // =========================================================================
     //  AUTOPLAY NEXT VIDEO LOGIC
     //  - Jika ada playlist aktif → mainkan video berikutnya dari playlist
-    //  - Kalau tidak, cari "episode selanjutnya" (ep 2 → ep 3) di related list
-    //  - Kalau tidak ketemu, ambil video related berikutnya
+    //  - Kalau tidak, cari "episode selanjutnya" yang JUDULNYA cocok (ep 2 → ep 3
+    //    dari series yang sama) di related list
+    //  - Kalau tidak ketemu lanjutan yang sesuai judul → player berhenti,
+    //    tidak mainkan video acak lain
     // =========================================================================
     function handleVideoEnded(forceImmediate = false) {
         // 1) Jika sedang main dari playlist, lanjut ke video berikutnya
@@ -1066,7 +1068,7 @@ HTML_TEMPLATE = """
             return;
         }
 
-        // 2) Cari "episode selanjutnya" berdasarkan pola judul (ep 2 → ep 3)
+        // 2) Cari "episode selanjutnya" yang judulnya cocok (ep 2 → ep 3, series yang sama)
         const nextEp = findNextEpisode();
         if (nextEp) {
             if (forceImmediate) {
@@ -1077,17 +1079,8 @@ HTML_TEMPLATE = """
             return;
         }
 
-        // 3) Kalau tidak ada pola episode, ambil video related berikutnya
-        const nextRelated = getNextRelatedVideo();
-        if (nextRelated) {
-            if (forceImmediate) {
-                playNextVideoNow(nextRelated);
-            } else {
-                showAutoplayCountdown(nextRelated, () => playNextVideoNow(nextRelated));
-            }
-            return;
-        }
-        // Tidak ada video lanjutan — diam saja
+        // Tidak ada lanjutan yang sesuai judul → jangan autoplay video lain.
+        // Player berhenti, pengguna bisa pilih video berikutnya sendiri.
     }
 
     function playNextVideoNow(v) {
@@ -1101,6 +1094,8 @@ HTML_TEMPLATE = """
     }
 
     // Pola judul episode yang umum: "Episode 2", "Eps 2", "Ep 2", "Part 2", "Bagian 2", "E2", dll
+    // Ini HANYA akan autoplay kalau ketemu episode selanjutnya yang JUDULNYA cocok
+    // (series yang sama). Kalau gak ketemu, player berhenti — gak main video acak.
     function findNextEpisode() {
         if (!currentPlayingVideo || !currentPlayingVideo.title) return null;
         const title = currentPlayingVideo.title;
@@ -1114,11 +1109,10 @@ HTML_TEMPLATE = """
         const nextEp = currentEp + 1;
 
         // Cari di related list video yang judulnya mengandung "Episode 3", "Ep 3", dll
-        // dan bila mungkin mengandung kata kunci yang sama dengan video sekarang
-        // (mis. nama series / judul utama)
+        // dan harus mengandung kata kunci yang SAMA dengan judul sekarang (nama series)
         const titleWithoutEp = title.replace(epMatch[0], '').trim().toLowerCase();
-        // Ambil 2-3 kata pertama dari judul (tanpa nomor episode) sebagai kata kunci
-        const keywords = titleWithoutEp.split(/\\s+/).filter(w => w.length > 2).slice(0, 3);
+        // Ambil 2-4 kata pertama dari judul (tanpa nomor episode) sebagai kata kunci
+        const keywords = titleWithoutEp.split(/\\s+/).filter(w => w.length > 2).slice(0, 4);
 
         // Pola judul untuk episode selanjutnya
         const nextPatterns = [
@@ -1129,28 +1123,33 @@ HTML_TEMPLATE = """
             new RegExp(`\\be${nextEp}\\b`, 'i')
         ];
 
+        // Skor setiap kandidat berdasarkan jumlah keyword yang cocok,
+        // lalu pilih yang paling mirip judul aslinya.
+        let bestMatch = null;
+        let bestScore = 0;
+        const minScore = Math.max(1, Math.ceil(keywords.length / 2)); // minimal separuh keyword cocok
+
         for (const v of relatedVideosList) {
             if (!v.title || v.id === currentPlayingVideo.id) continue;
             const vTitle = v.title;
             const matchesEp = nextPatterns.some(p => p.test(vTitle));
             if (!matchesEp) continue;
-            // Pastikan judul punya kemiripan (mengandung minimal satu keyword yang sama)
-            if (keywords.length === 0) return v;
-            const vLower = vTitle.toLowerCase();
-            if (keywords.some(k => vLower.includes(k))) return v;
-        }
-        return null;
-    }
 
-    function getNextRelatedVideo() {
-        if (!currentPlayingVideo) return null;
-        // Cari posisi video sekarang di related list
-        const idx = relatedVideosList.findIndex(v => v.id === currentPlayingVideo.id);
-        if (idx >= 0 && idx < relatedVideosList.length - 1) {
-            return relatedVideosList[idx + 1];
+            // Kalau gak ada keyword sama sekali (judul cuma "Episode 2"), asumsikan cocok
+            if (keywords.length === 0) return v;
+
+            // Hitung berapa keyword yang muncul di judul kandidat
+            const vLower = vTitle.toLowerCase();
+            let score = 0;
+            for (const k of keywords) {
+                if (vLower.includes(k)) score++;
+            }
+            if (score >= minScore && score > bestScore) {
+                bestScore = score;
+                bestMatch = v;
+            }
         }
-        // Kalau tidak ada di list, ambil video pertama yang bukan video sekarang
-        return relatedVideosList.find(v => v.id && v.id !== currentPlayingVideo.id) || null;
+        return bestMatch;
     }
 
     function showAutoplayCountdown(video, callback) {
@@ -1647,7 +1646,7 @@ def manifest():
 @app.route("/sw.js")
 def service_worker():
     js = """
-    const CACHE_NAME = 'yt-clone-v19';
+    const CACHE_NAME = 'yt-clone-v20';
     self.addEventListener('install', (e) => { 
         self.skipWaiting(); 
     });
