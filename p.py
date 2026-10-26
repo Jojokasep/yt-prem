@@ -19,11 +19,12 @@ HTML_TEMPLATE = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0f0f0f">
     <title>YouTube Premium Clone</title>
-    <link rel="manifest" href="/manifest.json?v=18">
+    <link rel="manifest" href="/manifest.json?v=19">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script src="https://www.youtube.com/iframe_api"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto', Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
         body { background: #0f0f0f; color: #f1f1f1; overflow-x: hidden; }
@@ -205,6 +206,120 @@ HTML_TEMPLATE = """
             .horizontal-list { padding: 0 16px 16px; }
             #scrollTopBtn { bottom: 65px; right: 15px; }
         }
+
+        /* ===== PLAYLIST SECTION ===== */
+        #playlist-section { display: none; margin-left: 240px; margin-top: 56px; padding: 24px; min-height: 100vh; }
+        .playlist-section-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+        .playlist-section-title { font-size: 22px; font-weight: 700; flex: 1; }
+        .btn-create-playlist { background: #ff4e45; color: #fff; border: none; padding: 10px 20px; border-radius: 20px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: background 0.15s; }
+        .btn-create-playlist:hover { background: #ff3b32; }
+        .playlists-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+        .playlist-card { background: #1c1c1c; border-radius: 12px; overflow: hidden; cursor: pointer; transition: transform 0.15s, background 0.15s; }
+        .playlist-card:hover { background: #272727; transform: translateY(-2px); }
+        .playlist-thumb-wrap { position: relative; width: 100%; aspect-ratio: 16/9; background: #272727; overflow: hidden; }
+        .playlist-thumb-wrap img { width: 100%; height: 100%; object-fit: cover; }
+        .playlist-thumb-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 48px; }
+        .playlist-badge { position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.85); color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; display: flex; align-items: center; gap: 4px; }
+        .playlist-info { padding: 12px; }
+        .playlist-card-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .playlist-card-meta { font-size: 13px; color: #aaa; }
+
+        /* Playlist detail view */
+        .playlist-detail-header { display: flex; gap: 24px; margin-bottom: 24px; align-items: flex-start; flex-wrap: wrap; }
+        .playlist-detail-thumb { width: 280px; aspect-ratio: 16/9; border-radius: 12px; background: #272727; overflow: hidden; flex-shrink: 0; }
+        .playlist-detail-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .playlist-detail-info { flex: 1; min-width: 260px; }
+        .playlist-detail-title { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+        .playlist-detail-meta { font-size: 14px; color: #aaa; margin-bottom: 16px; }
+        .playlist-detail-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+        .btn-play-all { background: #f1f1f1; color: #0f0f0f; border: none; padding: 12px 24px; border-radius: 24px; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+        .btn-play-all:hover { background: #d9d9d9; }
+        .btn-playlist-delete { background: #272727; color: #fff; border: none; padding: 12px 24px; border-radius: 24px; font-size: 15px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+        .btn-playlist-delete:hover { background: #ff4e45; color: #fff; }
+        .playlist-videos-list { display: flex; flex-direction: column; gap: 8px; }
+        .playlist-item { display: flex; gap: 12px; padding: 8px; border-radius: 8px; cursor: pointer; transition: background 0.15s; align-items: center; }
+        .playlist-item:hover { background: #272727; }
+        .playlist-item.active { background: #3f3f3f; }
+        .playlist-item-index { font-size: 14px; color: #aaa; width: 24px; text-align: center; flex-shrink: 0; }
+        .playlist-item-thumb { width: 120px; aspect-ratio: 16/9; background: #272727; border-radius: 6px; overflow: hidden; flex-shrink: 0; position: relative; }
+        .playlist-item-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .playlist-item-info { flex: 1; min-width: 0; }
+        .playlist-item-title { font-size: 14px; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 4px; }
+        .playlist-item-channel { font-size: 12px; color: #aaa; }
+        .playlist-item-remove { background: transparent; border: none; color: #aaa; cursor: pointer; padding: 8px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .playlist-item-remove:hover { color: #ff4e45; background: rgba(255,78,69,0.15); }
+        .back-btn { background: transparent; border: none; color: #fff; cursor: pointer; padding: 8px 12px; font-size: 14px; display: flex; align-items: center; gap: 4px; }
+        .back-btn:hover { color: #aaa; }
+
+        /* ===== ADD-TO-PLAYLIST MODAL ===== */
+        #playlist-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; padding: 16px; }
+        #playlist-modal.active { display: flex; }
+        .modal-content { background: #1c1c1c; border-radius: 16px; max-width: 460px; width: 100%; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column; }
+        .modal-header { padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: space-between; }
+        .modal-title { font-size: 18px; font-weight: 700; }
+        .modal-close { background: transparent; border: none; color: #aaa; cursor: pointer; padding: 6px; border-radius: 50%; }
+        .modal-close:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .modal-body { padding: 12px 20px; overflow-y: auto; flex: 1; }
+        .modal-create-row { display: flex; gap: 8px; margin-bottom: 12px; }
+        .modal-create-input { flex: 1; background: #272727; border: 1px solid #3f3f3f; color: #fff; padding: 10px 14px; border-radius: 20px; font-size: 14px; outline: none; }
+        .modal-create-input:focus { border-color: #1c62b9; }
+        .modal-create-btn { background: #3ea6ff; color: #0f0f0f; border: none; padding: 10px 18px; border-radius: 20px; font-size: 14px; font-weight: 600; cursor: pointer; }
+        .modal-create-btn:hover { background: #5ab8ff; }
+        .modal-playlist-list { display: flex; flex-direction: column; gap: 4px; }
+        .modal-playlist-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; cursor: pointer; transition: background 0.15s; }
+        .modal-playlist-item:hover { background: #272727; }
+        .modal-playlist-icon { width: 40px; height: 40px; background: #272727; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #aaa; flex-shrink: 0; overflow: hidden; }
+        .modal-playlist-icon img { width: 100%; height: 100%; object-fit: cover; }
+        .modal-playlist-info { flex: 1; min-width: 0; }
+        .modal-playlist-name { font-size: 14px; font-weight: 500; }
+        .modal-playlist-count { font-size: 12px; color: #aaa; }
+        .modal-playlist-check { color: #3ea6ff; visibility: hidden; }
+        .modal-playlist-item.has-video .modal-playlist-check { visibility: visible; }
+        .modal-empty { padding: 24px; text-align: center; color: #aaa; font-size: 14px; }
+
+        /* ===== AUTOPLAY COUNTDOWN ===== */
+        #autoplay-countdown { display: none; position: fixed; bottom: 100px; right: 24px; background: #1c1c1c; padding: 14px 16px; border-radius: 12px; z-index: 250; box-shadow: 0 6px 18px rgba(0,0,0,0.7); max-width: 360px; border: 1px solid rgba(255,255,255,0.1); }
+        .ac-row { display: flex; align-items: center; gap: 12px; }
+        .ac-thumb { width: 96px; aspect-ratio: 16/9; background: #272727; border-radius: 6px; overflow: hidden; flex-shrink: 0; }
+        .ac-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .ac-text { flex: 1; min-width: 0; }
+        .ac-label { font-size: 12px; color: #ff4e45; font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .ac-title { font-size: 13px; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3; margin-bottom: 6px; }
+        .ac-meta-row { display: flex; align-items: center; gap: 8px; }
+        .ac-timer-ring { width: 30px; height: 30px; border-radius: 50%; border: 3px solid #3f3f3f; border-top-color: #ff4e45; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; }
+        .ac-cancel { background: #444; border: none; color: #fff; padding: 6px 14px; border-radius: 16px; cursor: pointer; font-size: 12px; font-weight: 500; flex-shrink: 0; }
+        .ac-cancel:hover { background: #555; }
+        @media (max-width: 792px) {
+            #autoplay-countdown { right: 12px; left: 12px; bottom: 80px; max-width: none; }
+            .ac-thumb { width: 80px; }
+            #playlist-section { margin-left: 0; padding: 0 16px 70px; }
+            .playlists-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+            .playlist-detail-thumb { width: 100%; }
+        }
+
+        /* ===== PLAYER PLAYLIST BAR (when a playlist is active) ===== */
+        #playlist-queue-bar { display: none; background: #1c1c1c; border-radius: 12px; padding: 12px; margin-top: 16px; }
+        .pq-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 8px; }
+        .pq-title { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+        .pq-title-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pq-controls { display: flex; gap: 6px; flex-shrink: 0; }
+        .pq-btn { background: #272727; border: none; color: #fff; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.15s; }
+        .pq-btn:hover:not(:disabled) { background: #3f3f3f; }
+        .pq-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .pq-btn.close { color: #ff4e45; }
+        .pq-list { max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+        .pq-item { display: flex; gap: 8px; padding: 6px; border-radius: 6px; cursor: pointer; align-items: center; }
+        .pq-item:hover { background: #272727; }
+        .pq-item.active { background: #3f3f3f; }
+        .pq-item-thumb { width: 80px; aspect-ratio: 16/9; border-radius: 4px; overflow: hidden; flex-shrink: 0; background: #272727; }
+        .pq-item-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .pq-item-info { flex: 1; min-width: 0; }
+        .pq-item-title { font-size: 12px; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .pq-item-channel { font-size: 11px; color: #aaa; }
+
+        /* ===== ADD TO PLAYLIST BUTTON (in action row) ===== */
+        .playlist-added-flash { animation: playlistFlash 1.2s ease; }
+        @keyframes playlistFlash { 0% { background: #272727; } 30% { background: #3ea6ff; color: #0f0f0f; } 100% { background: #272727; } }
     </style>
 </head>
 <body>
@@ -243,6 +358,7 @@ HTML_TEMPLATE = """
     <div class="sidebar-item active" onclick="goHome(event)"><span class="material-icons-outlined">home</span><span class="sidebar-label">Beranda</span></div>
     <div class="sidebar-divider"></div>
     <div class="sidebar-item" onclick="showProfile(this)"><span class="material-icons-outlined">history</span><span class="sidebar-label">Histori</span></div>
+    <div class="sidebar-item" onclick="showPlaylistsView(this)"><span class="material-icons-outlined">playlist_play</span><span class="sidebar-label">Playlist Saya</span></div>
 </nav>
 
 <main id="main">
@@ -279,8 +395,10 @@ HTML_TEMPLATE = """
                     <button class="action-pill" id="btn-like-player" onclick="toggleLike(this)"><span class="material-icons-outlined">thumb_up</span> Suka</button>
                     <button class="action-pill" id="btn-dislike-player" onclick="toggleDislike(this)"><span class="material-icons-outlined">thumb_down</span></button>
                     <button class="action-pill" onclick="shareCurrentVideo()"><span class="material-icons-outlined">reply</span> Bagikan</button>
+                    <button class="action-pill" id="btn-add-to-playlist" onclick="openAddToPlaylistModal()"><span class="material-icons-outlined">playlist_add</span> Simpan</button>
                     <button class="action-pill" onclick="alert('Mengunduh video dalam kualitas tinggi... (Fitur Premium Aktif)')"><span class="material-icons-outlined">download</span> Download</button>
                 </div>
+                <div id="playlist-queue-bar"></div>
                 <div class="comments-box">
                     <div style="font-weight:700; margin-bottom:8px; font-size:14px;">Komentar <span style="font-weight:400; color:#aaa;">245</span></div>
                     <div style="display:flex; gap:10px; font-size:13px; align-items:center;">
@@ -315,17 +433,53 @@ HTML_TEMPLATE = """
     <div class="horizontal-list" id="history-scroll"></div>
 </div>
 
+<div id="playlist-section">
+    <button class="back-btn" onclick="showPlaylistsView(document.querySelectorAll('.sidebar-item, .nav-item')[document.querySelectorAll('.nav-item').length-1] || document.querySelector('.sidebar-item'))" style="margin-bottom: 8px; display:none;" id="playlist-back-btn"><span class="material-icons-outlined">arrow_back</span> Kembali</button>
+    <div id="playlist-section-content"></div>
+</div>
+
+<div id="playlist-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <div class="modal-title">Simpan ke playlist</div>
+            <button class="modal-close" onclick="closeAddToPlaylistModal()"><span class="material-icons-outlined">close</span></button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-create-row">
+                <input type="text" id="modal-new-playlist-name" class="modal-create-input" placeholder="Buat playlist baru..." maxlength="60">
+                <button class="modal-create-btn" onclick="createPlaylistFromModal()">Buat</button>
+            </div>
+            <div class="modal-playlist-list" id="modal-playlist-list"></div>
+        </div>
+    </div>
+</div>
+
+<div id="autoplay-countdown">
+    <div class="ac-row">
+        <div class="ac-thumb"><img id="ac-thumb-img" src="" alt=""></div>
+        <div class="ac-text">
+            <div class="ac-label">Putar Selanjutnya</div>
+            <div class="ac-title" id="ac-title"></div>
+            <div class="ac-meta-row">
+                <div class="ac-timer-ring" id="ac-timer">5</div>
+                <button class="ac-cancel" onclick="cancelAutoplay()">Batal</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <button id="scrollTopBtn" onclick="scrollToTop()" title="Ke atas"><span class="material-icons-outlined">arrow_upward</span></button>
 
 <nav id="bottom-nav">
     <div class="nav-item active" onclick="goHome(event, this)"><span class="material-icons-outlined">home</span><span class="nav-label">Beranda</span></div>
+    <div class="nav-item" onclick="showPlaylistsView(this)"><span class="material-icons-outlined">playlist_play</span><span class="nav-label">Playlist</span></div>
     <div class="nav-item" onclick="showProfile(this)"><div class="nav-avatar global-avatar-disp">t</div><span class="nav-label">Anda</span></div>
 </nav>
 
 <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js?v=18').then(reg => {
+            navigator.serviceWorker.register('/sw.js?v=19').then(reg => {
                 reg.update();
             }).catch(() => {});
         });
@@ -368,6 +522,19 @@ HTML_TEMPLATE = """
     let currentPlayingVideo = null;
     const loadedGridIds = new Set();
     const loadedRelatedIds = new Set();
+    let relatedVideosList = [];
+
+    // ===== YouTube IFrame API state =====
+    let ytPlayer = null;
+    let pendingPlayVideoId = null;
+    let autoplayCountdownTimer = null;
+    let autoplayCountdownCallback = null;
+
+    // ===== Playlist state =====
+    let activePlaylist = null;          // { name, videos: [], created }
+    let activePlaylistIndex = -1;      // index of currently playing video in activePlaylist
+    let currentDetailPlaylistName = null;  // currently viewed playlist detail
+    let modalPendingVideo = null;      // video to add via modal
     
     window.addEventListener('DOMContentLoaded', () => { 
         loadCustomAvatar();
@@ -383,6 +550,11 @@ HTML_TEMPLATE = """
             playVideo(e.state.video, false);
         } else if (e.state && e.state.view === 'profile') {
             showProfile(document.querySelectorAll('.nav-item')[1], false);
+        } else if (e.state && e.state.view === 'playlists') {
+            showPlaylistsView(null, false);
+        } else if (e.state && e.state.view === 'playlist-detail' && e.state.name) {
+            currentDetailPlaylistName = e.state.name;
+            showPlaylistDetail(e.state.name, false);
         } else {
             goHome(null, document.querySelector('.nav-item'), false);
         }
@@ -606,11 +778,16 @@ HTML_TEMPLATE = """
         document.getElementById('main').style.display = 'block';
         document.getElementById('player-section').style.display = 'none';
         document.getElementById('profile-section').style.display = 'none';
-        document.getElementById('player-box').innerHTML = ''; 
+        document.getElementById('playlist-section').style.display = 'none';
+        document.getElementById('player-box').innerHTML = '';
+        ytPlayer = null;  // iframe cleared, must recreate
+        hideAutoplayCountdown();
     }
 
     function goHome(e, el, push = true) { 
         if (e) e.preventDefault(); 
+        activePlaylist = null;
+        activePlaylistIndex = -1;
         activateNav(el || document.querySelector('.nav-item')); 
         document.getElementById('chips-container').style.display = 'block'; 
         if (push) {
@@ -650,6 +827,8 @@ HTML_TEMPLATE = """
         isRelatedLoading = false;
         hasMoreRelated = true;
         loadedRelatedIds.clear();
+        relatedVideosList = [];
+        hideAutoplayCountdown();
 
         let hist = JSON.parse(localStorage.getItem('yt_history') || '[]');
         hist = hist.filter(x => x.id !== v.id);
@@ -661,6 +840,7 @@ HTML_TEMPLATE = """
 
         document.getElementById('main').style.display = 'none';
         document.getElementById('profile-section').style.display = 'none';
+        document.getElementById('playlist-section').style.display = 'none';
         
         document.getElementById('player-title').textContent = v.title;
         document.getElementById('player-channel-name').textContent = v.channel || 'Channel Name';
@@ -673,11 +853,17 @@ HTML_TEMPLATE = """
         }
         const likeBtn = document.getElementById('btn-like-player');
         if (likeBtn) likeBtn.classList.remove('active');
+        const dislikeBtn = document.getElementById('btn-dislike-player');
+        if (dislikeBtn) dislikeBtn.classList.remove('active');
 
-        document.getElementById('player-box').innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
+        // Use YouTube IFrame API instead of plain iframe, so we can detect when video ends
+        playVideoInPlayer(v.id);
         
         document.getElementById('player-section').style.display = 'block';
         window.scrollTo(0, 0);
+
+        // Update playlist-queue-bar (only when a playlist is active)
+        renderPlaylistQueueBar();
 
         if (push) {
             history.pushState({view: 'player', video: videoStr}, '', '#watch?v=' + v.id);
@@ -736,6 +922,7 @@ HTML_TEMPLATE = """
                 currentRelatedOffset += data.length;
                 const newItems = data.filter(item => item.id && !loadedRelatedIds.has(item.id));
                 newItems.forEach(item => loadedRelatedIds.add(item.id));
+                newItems.forEach(item => relatedVideosList.push(item));
 
                 const html = newItems.map(item => {
                     const itemStr = encodeURIComponent(JSON.stringify(item));
@@ -781,6 +968,620 @@ HTML_TEMPLATE = """
             g.appendChild(card);
         });
     }
+
+    // =========================================================================
+    //  YOUTUBE IFRAME API - diperlukan untuk mendeteksi kapan video selesai
+    //  sehingga kita bisa memutar video selanjutnya secara otomatis.
+    // =========================================================================
+    function onYouTubeIframeAPIReady() {
+        if (pendingPlayVideoId) {
+            const id = pendingPlayVideoId;
+            pendingPlayVideoId = null;
+            initYtPlayer(id);
+        }
+    }
+
+    function playVideoInPlayer(videoId) {
+        // Jika player sudah ada, cukup ganti videonya (tanpa buang container)
+        if (ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
+            try {
+                ytPlayer.loadVideoById(videoId);
+                return;
+            } catch(e) {
+                console.warn('loadVideoById gagal, membuat player baru:', e);
+                ytPlayer = null;
+            }
+        }
+        // Jika API belum siap, simpan id untuk diputar nanti
+        if (typeof YT === 'undefined' || !YT.Player) {
+            pendingPlayVideoId = videoId;
+            return;
+        }
+        initYtPlayer(videoId);
+    }
+
+    function initYtPlayer(videoId) {
+        const box = document.getElementById('player-box');
+        box.innerHTML = '<div id="yt-player-mount"></div>';
+        try {
+            ytPlayer = new YT.Player('yt-player-mount', {
+                height: '100%',
+                width: '100%',
+                videoId: videoId,
+                playerVars: {
+                    autoplay: 1,
+                    rel: 0,
+                    modestbranding: 1,
+                    iv_load_policy: 3,
+                    playsinline: 1
+                },
+                events: {
+                    'onStateChange': onPlayerStateChange,
+                    'onReady': onPlayerReady,
+                    'onError': onPlayerError
+                }
+            });
+        } catch(e) {
+            console.error('Gagal membuat YT.Player:', e);
+            // Fallback ke iframe biasa (autoplay tetap jalan, tapi auto-next tidak akan bekerja)
+            box.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
+            ytPlayer = null;
+        }
+    }
+
+    function onPlayerReady(event) {
+        try { event.target.playVideo(); } catch(e) {}
+    }
+
+    function onPlayerError(event) {
+        console.warn('Player error:', event.data);
+        // Kalau video error (mis. diblokir), langsung lanjut ke video selanjutnya
+        hideAutoplayCountdown();
+        setTimeout(() => handleVideoEnded(true), 800);
+    }
+
+    function onPlayerStateChange(event) {
+        if (event.data === YT.PlayerState.ENDED) {
+            handleVideoEnded();
+        } else if (event.data === YT.PlayerState.PLAYING) {
+            hideAutoplayCountdown();
+        }
+    }
+
+    // =========================================================================
+    //  AUTOPLAY NEXT VIDEO LOGIC
+    //  - Jika ada playlist aktif → mainkan video berikutnya dari playlist
+    //  - Kalau tidak, cari "episode selanjutnya" (ep 2 → ep 3) di related list
+    //  - Kalau tidak ketemu, ambil video related berikutnya
+    // =========================================================================
+    function handleVideoEnded(forceImmediate = false) {
+        // 1) Jika sedang main dari playlist, lanjut ke video berikutnya
+        if (activePlaylist && activePlaylistIndex >= 0 && activePlaylistIndex < activePlaylist.videos.length - 1) {
+            const nextVid = activePlaylist.videos[activePlaylistIndex + 1];
+            if (forceImmediate) {
+                playNextVideoNow(nextVid);
+            } else {
+                showAutoplayCountdown(nextVid, () => playNextVideoNow(nextVid));
+            }
+            return;
+        }
+
+        // 2) Cari "episode selanjutnya" berdasarkan pola judul (ep 2 → ep 3)
+        const nextEp = findNextEpisode();
+        if (nextEp) {
+            if (forceImmediate) {
+                playNextVideoNow(nextEp);
+            } else {
+                showAutoplayCountdown(nextEp, () => playNextVideoNow(nextEp));
+            }
+            return;
+        }
+
+        // 3) Kalau tidak ada pola episode, ambil video related berikutnya
+        const nextRelated = getNextRelatedVideo();
+        if (nextRelated) {
+            if (forceImmediate) {
+                playNextVideoNow(nextRelated);
+            } else {
+                showAutoplayCountdown(nextRelated, () => playNextVideoNow(nextRelated));
+            }
+            return;
+        }
+        // Tidak ada video lanjutan — diam saja
+    }
+
+    function playNextVideoNow(v) {
+        if (!v || !v.id) return;
+        // Jika playlist aktif, update index
+        if (activePlaylist && activePlaylistIndex >= 0) {
+            const idx = activePlaylist.videos.findIndex(x => x.id === v.id);
+            if (idx >= 0) activePlaylistIndex = idx;
+        }
+        playVideo(encodeURIComponent(JSON.stringify(v)));
+    }
+
+    // Pola judul episode yang umum: "Episode 2", "Eps 2", "Ep 2", "Part 2", "Bagian 2", "E2", dll
+    function findNextEpisode() {
+        if (!currentPlayingVideo || !currentPlayingVideo.title) return null;
+        const title = currentPlayingVideo.title;
+
+        // Match pola seperti: Episode 2, Eps. 2, Ep 2, Part 2, Bagian 2, E2, eps2
+        const epMatch = title.match(/(?:episode|eps\\.?|ep\\.?|part|bagian|e|s\\d+e)\\s?\\.?\\s*(\\d{1,3})/i);
+        if (!epMatch) return null;
+
+        const currentEp = parseInt(epMatch[1], 10);
+        if (isNaN(currentEp)) return null;
+        const nextEp = currentEp + 1;
+
+        // Cari di related list video yang judulnya mengandung "Episode 3", "Ep 3", dll
+        // dan bila mungkin mengandung kata kunci yang sama dengan video sekarang
+        // (mis. nama series / judul utama)
+        const titleWithoutEp = title.replace(epMatch[0], '').trim().toLowerCase();
+        // Ambil 2-3 kata pertama dari judul (tanpa nomor episode) sebagai kata kunci
+        const keywords = titleWithoutEp.split(/\\s+/).filter(w => w.length > 2).slice(0, 3);
+
+        // Pola judul untuk episode selanjutnya
+        const nextPatterns = [
+            new RegExp(`\\bep(?:isode)?\\.?\\s?\\.?${nextEp}\\b`, 'i'),
+            new RegExp(`\\beps\\.?\\s?\\.?${nextEp}\\b`, 'i'),
+            new RegExp(`\\bpart\\s?${nextEp}\\b`, 'i'),
+            new RegExp(`\\bbagian\\s?${nextEp}\\b`, 'i'),
+            new RegExp(`\\be${nextEp}\\b`, 'i')
+        ];
+
+        for (const v of relatedVideosList) {
+            if (!v.title || v.id === currentPlayingVideo.id) continue;
+            const vTitle = v.title;
+            const matchesEp = nextPatterns.some(p => p.test(vTitle));
+            if (!matchesEp) continue;
+            // Pastikan judul punya kemiripan (mengandung minimal satu keyword yang sama)
+            if (keywords.length === 0) return v;
+            const vLower = vTitle.toLowerCase();
+            if (keywords.some(k => vLower.includes(k))) return v;
+        }
+        return null;
+    }
+
+    function getNextRelatedVideo() {
+        if (!currentPlayingVideo) return null;
+        // Cari posisi video sekarang di related list
+        const idx = relatedVideosList.findIndex(v => v.id === currentPlayingVideo.id);
+        if (idx >= 0 && idx < relatedVideosList.length - 1) {
+            return relatedVideosList[idx + 1];
+        }
+        // Kalau tidak ada di list, ambil video pertama yang bukan video sekarang
+        return relatedVideosList.find(v => v.id && v.id !== currentPlayingVideo.id) || null;
+    }
+
+    function showAutoplayCountdown(video, callback) {
+        if (!video || !video.id) return;
+        autoplayCountdownCallback = callback;
+        const el = document.getElementById('autoplay-countdown');
+        const timerEl = document.getElementById('ac-timer');
+        const titleEl = document.getElementById('ac-title');
+        const thumbEl = document.getElementById('ac-thumb-img');
+
+        titleEl.textContent = video.title || 'Video selanjutnya';
+        thumbEl.src = `https://i.ytimg.com/vi/${video.id}/mqdefault.jpg`;
+        let seconds = 5;
+        timerEl.textContent = seconds;
+        el.style.display = 'block';
+
+        if (autoplayCountdownTimer) clearInterval(autoplayCountdownTimer);
+        autoplayCountdownTimer = setInterval(() => {
+            seconds--;
+            if (timerEl) timerEl.textContent = seconds;
+            if (seconds <= 0) {
+                clearInterval(autoplayCountdownTimer);
+                autoplayCountdownTimer = null;
+                el.style.display = 'none';
+                const cb = autoplayCountdownCallback;
+                autoplayCountdownCallback = null;
+                if (cb) cb();
+            }
+        }, 1000);
+    }
+
+    function hideAutoplayCountdown() {
+        const el = document.getElementById('autoplay-countdown');
+        if (el) el.style.display = 'none';
+        if (autoplayCountdownTimer) {
+            clearInterval(autoplayCountdownTimer);
+            autoplayCountdownTimer = null;
+        }
+        autoplayCountdownCallback = null;
+    }
+
+    function cancelAutoplay() {
+        hideAutoplayCountdown();
+    }
+
+    // =========================================================================
+    //  PLAYLIST MANAGEMENT (disimpan di localStorage)
+    // =========================================================================
+    function getPlaylists() {
+        try {
+            return JSON.parse(localStorage.getItem('yt_playlists') || '[]');
+        } catch(e) { return []; }
+    }
+
+    function savePlaylists(playlists) {
+        try { localStorage.setItem('yt_playlists', JSON.stringify(playlists)); } catch(e) {}
+    }
+
+    function showPlaylistsView(el, push = true) {
+        isLoadingMore = false;
+        hideAutoplayCountdown();
+        if (el) {
+            document.querySelectorAll('.nav-item, .sidebar-item').forEach(n => n.classList.remove('active'));
+            el.classList.add('active');
+        }
+        document.getElementById('main').style.display = 'none';
+        document.getElementById('player-section').style.display = 'none';
+        document.getElementById('profile-section').style.display = 'none';
+        document.getElementById('playlist-section').style.display = 'block';
+        document.getElementById('playlist-back-btn').style.display = 'none';
+        currentDetailPlaylistName = null;
+
+        if (push) {
+            history.pushState({view: 'playlists'}, '', '#playlists');
+        }
+        renderPlaylistsList();
+    }
+
+    function renderPlaylistsList() {
+        const container = document.getElementById('playlist-section-content');
+        const playlists = getPlaylists();
+        let html = `
+            <div class="playlist-section-header">
+                <div class="playlist-section-title">Playlist Saya</div>
+                <button class="btn-create-playlist" onclick="createPlaylistFromPrompt()">
+                    <span class="material-icons-outlined">add</span> Playlist Baru
+                </button>
+            </div>
+        `;
+        if (playlists.length === 0) {
+            html += `<div style="padding:40px 20px; text-align:center; color:#aaa;">
+                <span class="material-icons-outlined" style="font-size:64px; color:#444; display:block; margin-bottom:16px;">queue_music</span>
+                <div style="font-size:16px; margin-bottom:8px;">Belum ada playlist</div>
+                <div style="font-size:13px;">Buat playlist pertama Anda, lalu tambahkan video dengan tombol "Simpan" pada pemutar.</div>
+            </div>`;
+        } else {
+            html += `<div class="playlists-grid">`;
+            playlists.forEach(pl => {
+                const first = pl.videos && pl.videos[0];
+                const thumbHtml = first
+                    ? `<img src="https://i.ytimg.com/vi/${first.id}/mqdefault.jpg" alt="">`
+                    : `<div class="playlist-thumb-placeholder"><span class="material-icons-outlined">queue_music</span></div>`;
+                html += `
+                    <div class="playlist-card" onclick="showPlaylistDetail('${escapeAttr(pl.name)}')">
+                        <div class="playlist-thumb-wrap">${thumbHtml}
+                            <div class="playlist-badge"><span class="material-icons-outlined" style="font-size:14px;">playlist_play</span> ${pl.videos.length}</div>
+                        </div>
+                        <div class="playlist-info">
+                            <div class="playlist-card-title">${escapeHtml(pl.name)}</div>
+                            <div class="playlist-card-meta">${pl.videos.length} video</div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+        }
+        container.innerHTML = html;
+    }
+
+    function createPlaylistFromPrompt() {
+        const name = prompt('Nama playlist baru:', 'Playlist Tanpa Judul');
+        if (!name || !name.trim()) return;
+        const playlists = getPlaylists();
+        if (playlists.find(p => p.name === name.trim())) {
+            alert('Playlist dengan nama tersebut sudah ada.');
+            return;
+        }
+        playlists.push({ name: name.trim(), videos: [], created: Date.now() });
+        savePlaylists(playlists);
+        if (document.getElementById('playlist-section').style.display === 'block' && !currentDetailPlaylistName) {
+            renderPlaylistsList();
+        }
+        if (document.getElementById('playlist-modal').classList.contains('active')) {
+            renderModalPlaylistList();
+        }
+    }
+
+    function createPlaylistFromModal() {
+        const input = document.getElementById('modal-new-playlist-name');
+        const name = input.value.trim();
+        if (!name) return;
+        const playlists = getPlaylists();
+        if (playlists.find(p => p.name === name)) {
+            alert('Playlist dengan nama tersebut sudah ada.');
+            return;
+        }
+        playlists.push({ name, videos: [], created: Date.now() });
+        savePlaylists(playlists);
+        input.value = '';
+        renderModalPlaylistList();
+    }
+
+    function showPlaylistDetail(name, push = true) {
+        const playlists = getPlaylists();
+        const pl = playlists.find(p => p.name === name);
+        if (!pl) {
+            showPlaylistsView(null, false);
+            return;
+        }
+        currentDetailPlaylistName = name;
+        document.getElementById('playlist-section').style.display = 'block';
+        document.getElementById('playlist-back-btn').style.display = 'inline-flex';
+        document.getElementById('main').style.display = 'none';
+        document.getElementById('player-section').style.display = 'none';
+        document.getElementById('profile-section').style.display = 'none';
+
+        if (push) {
+            history.pushState({view: 'playlist-detail', name: name}, '', '#playlist=' + encodeURIComponent(name));
+        }
+        renderPlaylistDetail(pl);
+    }
+
+    function renderPlaylistDetail(pl) {
+        const container = document.getElementById('playlist-section-content');
+        const first = pl.videos[0];
+        const thumbHtml = first
+            ? `<img src="https://i.ytimg.com/vi/${first.id}/mqdefault.jpg" alt="">`
+            : `<div class="playlist-thumb-placeholder"><span class="material-icons-outlined">queue_music</span></div>`;
+        let html = `
+            <button class="back-btn" onclick="showPlaylistsView(null, true)" style="margin-bottom: 12px;">
+                <span class="material-icons-outlined">arrow_back</span> Kembali ke Playlist
+            </button>
+            <div class="playlist-detail-header">
+                <div class="playlist-detail-thumb">${thumbHtml}</div>
+                <div class="playlist-detail-info">
+                    <div class="playlist-detail-title">${escapeHtml(pl.name)}</div>
+                    <div class="playlist-detail-meta">${pl.videos.length} video • Dibuat ${new Date(pl.created || Date.now()).toLocaleDateString('id-ID')}</div>
+                    <div class="playlist-detail-actions">
+                        <button class="btn-play-all" onclick="playPlaylist('${escapeAttr(pl.name)}')">
+                            <span class="material-icons-outlined">play_arrow</span> Putar Semua
+                        </button>
+                        <button class="btn-playlist-delete" onclick="deletePlaylist('${escapeAttr(pl.name)}')">
+                            <span class="material-icons-outlined">delete</span> Hapus Playlist
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="playlist-videos-list">
+        `;
+        if (pl.videos.length === 0) {
+            html += `<div style="padding:24px; text-align:center; color:#aaa;">Playlist ini masih kosong. Tambahkan video lewat tombol "Simpan" di pemutar.</div>`;
+        } else {
+            pl.videos.forEach((v, i) => {
+                const isActive = activePlaylist && activePlaylist.name === pl.name && activePlaylistIndex === i;
+                html += `
+                    <div class="playlist-item ${isActive ? 'active' : ''}" onclick="playPlaylistFromIndex('${escapeAttr(pl.name)}', ${i})">
+                        <div class="playlist-item-index">${isActive ? '<span class="material-icons-outlined" style="font-size:16px; color:#ff4e45;">play_arrow</span>' : (i+1)}</div>
+                        <div class="playlist-item-thumb"><img src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" loading="lazy"></div>
+                        <div class="playlist-item-info">
+                            <div class="playlist-item-title">${escapeHtml(v.title || 'No title')}</div>
+                            <div class="playlist-item-channel">${escapeHtml(v.channel || '')}</div>
+                        </div>
+                        <button class="playlist-item-remove" onclick="event.stopPropagation(); removeFromPlaylist('${escapeAttr(pl.name)}', '${v.id}')" title="Hapus dari playlist">
+                            <span class="material-icons-outlined" style="font-size:20px;">delete_outline</span>
+                        </button>
+                    </div>
+                `;
+            });
+        }
+        html += `</div>`;
+        container.innerHTML = html;
+    }
+
+    function playPlaylistFromIndex(name, index) {
+        const playlists = getPlaylists();
+        const pl = playlists.find(p => p.name === name);
+        if (!pl || index < 0 || index >= pl.videos.length) return;
+        activePlaylist = pl;
+        activePlaylistIndex = index;
+        playVideo(encodeURIComponent(JSON.stringify(pl.videos[index])));
+    }
+
+    function playPlaylist(name) {
+        const playlists = getPlaylists();
+        const pl = playlists.find(p => p.name === name);
+        if (!pl || pl.videos.length === 0) {
+            alert('Playlist ini kosong.');
+            return;
+        }
+        activePlaylist = pl;
+        activePlaylistIndex = 0;
+        playVideo(encodeURIComponent(JSON.stringify(pl.videos[0])));
+    }
+
+    function removeFromPlaylist(name, videoId) {
+        const playlists = getPlaylists();
+        const pl = playlists.find(p => p.name === name);
+        if (!pl) return;
+        pl.videos = pl.videos.filter(v => v.id !== videoId);
+        savePlaylists(playlists);
+        // Kalau playlist aktif sedang diputar, sinkronkan
+        if (activePlaylist && activePlaylist.name === name) {
+            activePlaylist = pl;
+            if (activePlaylistIndex >= pl.videos.length) activePlaylistIndex = pl.videos.length - 1;
+            renderPlaylistQueueBar();
+        }
+        renderPlaylistDetail(pl);
+    }
+
+    function deletePlaylist(name) {
+        if (!confirm(`Hapus playlist "${name}"?`)) return;
+        let playlists = getPlaylists();
+        playlists = playlists.filter(p => p.name !== name);
+        savePlaylists(playlists);
+        if (activePlaylist && activePlaylist.name === name) {
+            activePlaylist = null;
+            activePlaylistIndex = -1;
+            renderPlaylistQueueBar();
+        }
+        showPlaylistsView(null, true);
+    }
+
+    // =========================================================================
+    //  PLAYLIST QUEUE BAR (di bawah player saat playlist aktif)
+    // =========================================================================
+    function renderPlaylistQueueBar() {
+        const bar = document.getElementById('playlist-queue-bar');
+        if (!bar) return;
+        if (!activePlaylist || activePlaylistIndex < 0 || activePlaylist.videos.length === 0) {
+            bar.style.display = 'none';
+            bar.innerHTML = '';
+            return;
+        }
+        bar.style.display = 'block';
+        const hasPrev = activePlaylistIndex > 0;
+        const hasNext = activePlaylistIndex < activePlaylist.videos.length - 1;
+        let html = `
+            <div class="pq-header">
+                <div class="pq-title">
+                    <span class="material-icons-outlined" style="font-size:18px; color:#ff4e45;">queue_music</span>
+                    <span class="pq-title-text">${escapeHtml(activePlaylist.name)} • ${activePlaylistIndex+1}/${activePlaylist.videos.length}</span>
+                </div>
+                <div class="pq-controls">
+                    <button class="pq-btn" ${hasPrev ? '' : 'disabled'} onclick="prevInPlaylist()" title="Sebelumnya">
+                        <span class="material-icons-outlined" style="font-size:18px;">skip_previous</span>
+                    </button>
+                    <button class="pq-btn" ${hasNext ? '' : 'disabled'} onclick="nextInPlaylist()" title="Selanjutnya">
+                        <span class="material-icons-outlined" style="font-size:18px;">skip_next</span>
+                    </button>
+                    <button class="pq-btn close" onclick="exitPlaylistMode()" title="Keluar dari playlist">
+                        <span class="material-icons-outlined" style="font-size:18px;">close</span>
+                    </button>
+                </div>
+            </div>
+            <div class="pq-list">
+        `;
+        activePlaylist.videos.forEach((v, i) => {
+            const isActive = i === activePlaylistIndex;
+            html += `
+                <div class="pq-item ${isActive ? 'active' : ''}" onclick="playPlaylistFromIndex('${escapeAttr(activePlaylist.name)}', ${i})">
+                    <div class="pq-item-thumb"><img src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" loading="lazy"></div>
+                    <div class="pq-item-info">
+                        <div class="pq-item-title">${escapeHtml(v.title || 'No title')}</div>
+                        <div class="pq-item-channel">${escapeHtml(v.channel || '')}</div>
+                    </div>
+                </div>
+            `;
+        });
+        html += `</div>`;
+        bar.innerHTML = html;
+    }
+
+    function nextInPlaylist() {
+        if (!activePlaylist || activePlaylistIndex < 0) return;
+        if (activePlaylistIndex >= activePlaylist.videos.length - 1) return;
+        hideAutoplayCountdown();
+        activePlaylistIndex++;
+        playVideo(encodeURIComponent(JSON.stringify(activePlaylist.videos[activePlaylistIndex])));
+    }
+
+    function prevInPlaylist() {
+        if (!activePlaylist || activePlaylistIndex <= 0) return;
+        hideAutoplayCountdown();
+        activePlaylistIndex--;
+        playVideo(encodeURIComponent(JSON.stringify(activePlaylist.videos[activePlaylistIndex])));
+    }
+
+    function exitPlaylistMode() {
+        activePlaylist = null;
+        activePlaylistIndex = -1;
+        renderPlaylistQueueBar();
+    }
+
+    // =========================================================================
+    //  ADD TO PLAYLIST MODAL
+    // =========================================================================
+    function openAddToPlaylistModal() {
+        if (!currentPlayingVideo) return;
+        modalPendingVideo = currentPlayingVideo;
+        document.getElementById('modal-new-playlist-name').value = '';
+        renderModalPlaylistList();
+        document.getElementById('playlist-modal').classList.add('active');
+    }
+
+    function closeAddToPlaylistModal() {
+        document.getElementById('playlist-modal').classList.remove('active');
+        modalPendingVideo = null;
+    }
+
+    function renderModalPlaylistList() {
+        const list = document.getElementById('modal-playlist-list');
+        const playlists = getPlaylists();
+        if (playlists.length === 0) {
+            list.innerHTML = `<div class="modal-empty">Belum ada playlist. Buat baru di kotak di atas.</div>`;
+            return;
+        }
+        const v = modalPendingVideo;
+        list.innerHTML = playlists.map(pl => {
+            const hasVideo = v && pl.videos.some(x => x.id === v.id);
+            const first = pl.videos[0];
+            const thumbHtml = first
+                ? `<img src="https://i.ytimg.com/vi/${first.id}/default.jpg" alt="">`
+                : `<span class="material-icons-outlined">queue_music</span>`;
+            return `
+                <div class="modal-playlist-item ${hasVideo ? 'has-video' : ''}" onclick="toggleVideoInPlaylist('${escapeAttr(pl.name)}')">
+                    <div class="modal-playlist-icon">${thumbHtml}</div>
+                    <div class="modal-playlist-info">
+                        <div class="modal-playlist-name">${escapeHtml(pl.name)}</div>
+                        <div class="modal-playlist-count">${pl.videos.length} video${hasVideo ? ' • Sudah ditambahkan' : ''}</div>
+                    </div>
+                    <span class="material-icons-outlined modal-playlist-check">check_circle</span>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function toggleVideoInPlaylist(name) {
+        const playlists = getPlaylists();
+        const pl = playlists.find(p => p.name === name);
+        if (!pl || !modalPendingVideo) return;
+        const idx = pl.videos.findIndex(v => v.id === modalPendingVideo.id);
+        if (idx >= 0) {
+            pl.videos.splice(idx, 1);
+        } else {
+            pl.videos.push({...modalPendingVideo});
+        }
+        savePlaylists(playlists);
+        // Animasi feedback pada tombol "Simpan"
+        const btn = document.getElementById('btn-add-to-playlist');
+        if (btn) {
+            btn.classList.remove('playlist-added-flash');
+            void btn.offsetWidth;  // restart animation
+            btn.classList.add('playlist-added-flash');
+        }
+        renderModalPlaylistList();
+        // Update queue bar jika playlist aktif
+        if (activePlaylist && activePlaylist.name === name) {
+            activePlaylist = pl;
+            renderPlaylistQueueBar();
+        }
+    }
+
+    // =========================================================================
+    //  Helper escape
+    // =========================================================================
+    function escapeHtml(s) {
+        if (!s) return '';
+        return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    function escapeAttr(s) {
+        if (!s) return '';
+        return String(s).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+
+    // Klik di luar modal = tutup modal
+    document.addEventListener('click', (e) => {
+        const modal = document.getElementById('playlist-modal');
+        if (modal && modal.classList.contains('active') && e.target === modal) {
+            closeAddToPlaylistModal();
+        }
+    });
 </script>
 </body>
 </html>
@@ -846,7 +1647,7 @@ def manifest():
 @app.route("/sw.js")
 def service_worker():
     js = """
-    const CACHE_NAME = 'yt-clone-v18';
+    const CACHE_NAME = 'yt-clone-v19';
     self.addEventListener('install', (e) => { 
         self.skipWaiting(); 
     });
