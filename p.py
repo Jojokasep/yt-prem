@@ -19,7 +19,7 @@ HTML_TEMPLATE = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0f0f0f">
     <title>YouTube Premium Clone</title>
-    <link rel="manifest" href="/manifest.json?v=20">
+    <link rel="manifest" href="/manifest.json?v=21">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
@@ -479,7 +479,7 @@ HTML_TEMPLATE = """
 <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js?v=20').then(reg => {
+            navigator.serviceWorker.register('/sw.js?v=21').then(reg => {
                 reg.update();
             }).catch(() => {});
         });
@@ -995,6 +995,18 @@ HTML_TEMPLATE = """
         // Jika API belum siap, simpan id untuk diputar nanti
         if (typeof YT === 'undefined' || !YT.Player) {
             pendingPlayVideoId = videoId;
+            // Fallback: kalau API gak ke-load dalam 5 detik (mis. diblokir),
+            // tetap mainkan videonya pakai iframe biasa (auto-next gak akan jalan).
+            setTimeout(() => {
+                if (pendingPlayVideoId === videoId && !ytPlayer) {
+                    pendingPlayVideoId = null;
+                    console.warn('YT IFrame API tidak dimuat, fallback ke iframe biasa');
+                    const box = document.getElementById('player-box');
+                    if (box) {
+                        box.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&iv_load_policy=3" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
+                    }
+                }
+            }, 5000);
             return;
         }
         initYtPlayer(videoId);
@@ -1052,11 +1064,14 @@ HTML_TEMPLATE = """
     //  AUTOPLAY NEXT VIDEO LOGIC
     //  - Jika ada playlist aktif → mainkan video berikutnya dari playlist
     //  - Kalau tidak, cari "episode selanjutnya" yang JUDULNYA cocok (ep 2 → ep 3
-    //    dari series yang sama) di related list
-    //  - Kalau tidak ketemu lanjutan yang sesuai judul → player berhenti,
-    //    tidak mainkan video acak lain
+    //    dari series yang sama):
+    //      a) di related list lokal (sudah dimuat di sidebar kanan)
+    //      b) kalau gak ada → cari ke server dengan query yang ditargetkan
+    //         (judul diganti jadi "Eps N+1"), misal "Aini Malaikat Tak Bersayap
+    //         ANTV Eps 21" — ini untuk kasus related list cuma berisi Eps 1-15.
+    //  - Kalau tetap tidak ketemu → player berhenti, gak main video acak
     // =========================================================================
-    function handleVideoEnded(forceImmediate = false) {
+    async function handleVideoEnded(forceImmediate = false) {
         // 1) Jika sedang main dari playlist, lanjut ke video berikutnya
         if (activePlaylist && activePlaylistIndex >= 0 && activePlaylistIndex < activePlaylist.videos.length - 1) {
             const nextVid = activePlaylist.videos[activePlaylistIndex + 1];
@@ -1068,8 +1083,35 @@ HTML_TEMPLATE = """
             return;
         }
 
-        // 2) Cari "episode selanjutnya" yang judulnya cocok (ep 2 → ep 3, series yang sama)
-        const nextEp = findNextEpisode();
+        // 2a) Cari di related list lokal (cepat, sinkron)
+        let nextEp = findNextEpisodeInList(relatedVideosList);
+
+        // 2b) Kalau tidak ada di related list, cari ke server dengan query
+        //     yang ditargetkan langsung ke "Eps N+1" (mis. "Aini ... ANTV Eps 21")
+        if (!nextEp) {
+            const query = buildNextEpisodeQuery();
+            if (query) {
+                showSearchingOverlay();
+                try {
+                    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&offset=0`);
+                    const data = await res.json();
+                    if (data && data.length > 0) {
+                        // Tambahkan hasil ke related list supaya gak fetch ulang nanti
+                        data.forEach(item => {
+                            if (item.id && !loadedRelatedIds.has(item.id)) {
+                                loadedRelatedIds.add(item.id);
+                                relatedVideosList.push(item);
+                            }
+                        });
+                        nextEp = findNextEpisodeInList(data);
+                    }
+                } catch(e) {
+                    console.error('Gagal mencari episode selanjutnya ke server:', e);
+                }
+                hideSearchingOverlay();
+            }
+        }
+
         if (nextEp) {
             if (forceImmediate) {
                 playNextVideoNow(nextEp);
@@ -1096,8 +1138,8 @@ HTML_TEMPLATE = """
     // Pola judul episode yang umum: "Episode 2", "Eps 2", "Ep 2", "Part 2", "Bagian 2", "E2", dll
     // Ini HANYA akan autoplay kalau ketemu episode selanjutnya yang JUDULNYA cocok
     // (series yang sama). Kalau gak ketemu, player berhenti — gak main video acak.
-    function findNextEpisode() {
-        if (!currentPlayingVideo || !currentPlayingVideo.title) return null;
+    function findNextEpisodeInList(list) {
+        if (!currentPlayingVideo || !currentPlayingVideo.title || !list) return null;
         const title = currentPlayingVideo.title;
 
         // Match pola seperti: Episode 2, Eps. 2, Ep 2, Part 2, Bagian 2, E2, eps2
@@ -1108,7 +1150,7 @@ HTML_TEMPLATE = """
         if (isNaN(currentEp)) return null;
         const nextEp = currentEp + 1;
 
-        // Cari di related list video yang judulnya mengandung "Episode 3", "Ep 3", dll
+        // Cari di list video yang judulnya mengandung "Episode 3", "Ep 3", dll
         // dan harus mengandung kata kunci yang SAMA dengan judul sekarang (nama series)
         const titleWithoutEp = title.replace(epMatch[0], '').trim().toLowerCase();
         // Ambil 2-4 kata pertama dari judul (tanpa nomor episode) sebagai kata kunci
@@ -1129,7 +1171,7 @@ HTML_TEMPLATE = """
         let bestScore = 0;
         const minScore = Math.max(1, Math.ceil(keywords.length / 2)); // minimal separuh keyword cocok
 
-        for (const v of relatedVideosList) {
+        for (const v of list) {
             if (!v.title || v.id === currentPlayingVideo.id) continue;
             const vTitle = v.title;
             const matchesEp = nextPatterns.some(p => p.test(vTitle));
@@ -1144,12 +1186,65 @@ HTML_TEMPLATE = """
             for (const k of keywords) {
                 if (vLower.includes(k)) score++;
             }
+            // Bonus besar kalau channel sama (prioritaskan series yang sama channel-nya)
+            if (v.channel && currentPlayingVideo.channel && v.channel === currentPlayingVideo.channel) {
+                score += 100;
+            }
             if (score >= minScore && score > bestScore) {
                 bestScore = score;
                 bestMatch = v;
             }
         }
         return bestMatch;
+    }
+
+    // Build query khusus untuk mencari episode selanjutnya di server.
+    // Mis. judul "Aini Malaikat Tak Bersayap ANTV Eps 20 (FULL)" →
+    //   query  "Aini Malaikat Tak Bersayap ANTV Eps 21"  (FULL dihilangkan)
+    function buildNextEpisodeQuery() {
+        if (!currentPlayingVideo || !currentPlayingVideo.title) return null;
+        const title = currentPlayingVideo.title;
+        const epMatch = title.match(/(?:episode|eps\\.?|ep\\.?|part|bagian|e|s\\d+e)\\s?\\.?\\s*(\\d{1,3})/i);
+        if (!epMatch) return null;
+        const currentEp = parseInt(epMatch[1], 10);
+        if (isNaN(currentEp)) return null;
+        const nextEp = currentEp + 1;
+
+        // Ganti nomor episode di posisi yang cocok dengan nextEp
+        const nextEpStr = epMatch[0].replace(epMatch[1], String(nextEp));
+        let query = title.replace(epMatch[0], nextEpStr);
+        // Hilangkan parenthetical seperti "(FULL)", "(Episode Lengkap)", "(Sub Indo)", dll
+        query = query.replace(/\\s*\\([^)]*\\)\\s*/g, ' ').trim();
+        return query;
+    }
+
+    // Overlay "mencari..." yang muncul sebentar selama fetch ke server
+    function showSearchingOverlay() {
+        const el = document.getElementById('autoplay-countdown');
+        if (!el) return;
+        const labelEl = document.getElementById('ac-label');
+        const titleEl = document.getElementById('ac-title');
+        const thumbEl = document.getElementById('ac-thumb-img');
+        const timerEl = document.getElementById('ac-timer');
+        const cancelBtn = el.querySelector('.ac-cancel');
+        if (labelEl) labelEl.textContent = 'MENCARI';
+        if (titleEl) titleEl.textContent = 'Mencari episode selanjutnya...';
+        if (thumbEl) thumbEl.src = 'https://i.ytimg.com/vi/' + (currentPlayingVideo ? currentPlayingVideo.id : '') + '/mqdefault.jpg';
+        if (timerEl) timerEl.style.display = 'none';
+        if (cancelBtn) cancelBtn.style.display = 'none';
+        el.style.display = 'block';
+    }
+
+    function hideSearchingOverlay() {
+        const el = document.getElementById('autoplay-countdown');
+        if (!el) return;
+        el.style.display = 'none';
+        const labelEl = document.getElementById('ac-label');
+        const timerEl = document.getElementById('ac-timer');
+        const cancelBtn = el.querySelector('.ac-cancel');
+        if (labelEl) labelEl.textContent = 'Putar Selanjutnya';
+        if (timerEl) timerEl.style.display = '';
+        if (cancelBtn) cancelBtn.style.display = '';
     }
 
     function showAutoplayCountdown(video, callback) {
@@ -1646,7 +1741,7 @@ def manifest():
 @app.route("/sw.js")
 def service_worker():
     js = """
-    const CACHE_NAME = 'yt-clone-v20';
+    const CACHE_NAME = 'yt-clone-v21';
     self.addEventListener('install', (e) => { 
         self.skipWaiting(); 
     });
